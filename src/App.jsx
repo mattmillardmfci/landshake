@@ -139,6 +139,10 @@ function App() {
 						setViewState(newViewState);
 						setUserLocation({ latitude, longitude });
 						console.log("Zoomed to user location:", newViewState);
+
+						// Generate fake parcels around user's location
+						const newParcels = generateFakeParcels(latitude, longitude, 100);
+						setFakeParcels(newParcels);
 					} else {
 						console.warn("User location outside Missouri bounds");
 						setLocationError("Your location appears to be outside Missouri");
