@@ -300,7 +300,7 @@ function App() {
 							type="fill"
 							paint={{
 								"fill-color": "#39FF14",
-								"fill-opacity": 0.2,
+								"fill-opacity": 0,
 							}}
 						/>
 						<Layer
@@ -309,11 +309,11 @@ function App() {
 							paint={{
 								"line-color": "#39FF14",
 								"line-width": 2,
-								"line-opacity": 0.8,
+								"line-opacity": 0.6,
 							}}
 						/>
 					</Source>
-				)}
+				)}}
 
 				{/* Real Parcels (if any) */}
 				{parcels && parcels.features && parcels.features.length > 0 && (
