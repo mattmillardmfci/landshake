@@ -49,12 +49,7 @@ function App() {
 		// Check if parcel bounds overlap with existing parcels
 		const boundsOverlap = (minLng, maxLng, minLat, maxLat) => {
 			return usedBounds.some((bound) => {
-				return !(
-					maxLng < bound.minLng ||
-					minLng > bound.maxLng ||
-					maxLat < bound.minLat ||
-					minLat > bound.maxLat
-				);
+				return !(maxLng < bound.minLng || minLng > bound.maxLng || maxLat < bound.minLat || minLat > bound.maxLat);
 			});
 		};
 
@@ -352,16 +347,18 @@ function App() {
 
 			{/* Splash Screen */}
 			{showSplash && (
-				<div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
-					<div className="text-center space-y-6 animate-fade-in">
-						<h2
-							className="text-neon-green text-4xl md:text-5xl font-bold tracking-wider uppercase"
-							style={{ fontFamily: "Impact, sans-serif", textShadow: "0 0 20px rgba(57, 255, 20, 0.5)" }}>
-							Where Property Lines Become
-							<br />
-							Permission Granted
-						</h2>
-						<img src="/logo.png" alt="Landshake Logo" className="w-64 h-64 mx-auto object-contain drop-shadow-2xl" />
+				<div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center px-6">
+					<div className="text-center space-y-8 animate-fade-in flex flex-col items-center justify-center max-w-4xl">
+						<img src="/logo.png" alt="Landshake Logo" className="w-4/5 md:w-96 h-auto mx-auto object-contain drop-shadow-2xl" />
+						<div className="space-y-3">
+							<h1 className="text-neon-green text-5xl md:text-7xl font-black tracking-tight" style={{ fontFamily: "Impact, Futura, sans-serif", textShadow: "0 0 30px rgba(57, 255, 20, 0.6), 0 0 60px rgba(57, 255, 20, 0.3)" }}>
+								WHERE PROPERTY LINES
+							</h1>
+							<h1 className="text-neon-green text-5xl md:text-7xl font-black tracking-tight" style={{ fontFamily: "Impact, Futura, sans-serif", textShadow: "0 0 30px rgba(57, 255, 20, 0.6), 0 0 60px rgba(57, 255, 20, 0.3)" }}>
+								BECOME PERMISSION GRANTED
+							</h1>
+						</div>
+						<p className="text-gray-400 text-sm md:text-base tracking-widest uppercase font-light mt-6 letter-spacing">The landowner verification platform</p>
 					</div>
 				</div>
 			)}
