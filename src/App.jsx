@@ -106,15 +106,16 @@ function App() {
 					coordinates: coordinates,
 				},
 				properties: {
-				PARCEL_ID: `FAKE-${created + 1}`,
-				OWNER: `Property Owner ${created + 1}`,
-				ACRES_CALC: acres,
-				ADDRESS: `${Math.floor(Math.random() * 9999)} County Road ${Math.floor(Math.random() * 999)}`,
-				ownerInfoLocked: true, // Future premium feature: Unlock Owner Information
-			},
-		});
+					PARCEL_ID: `FAKE-${created + 1}`,
+					OWNER: `Property Owner ${created + 1}`,
+					ACRES_CALC: acres,
+					ADDRESS: `${Math.floor(Math.random() * 9999)} County Road ${Math.floor(Math.random() * 999)}`,
+					ownerInfoLocked: true, // Future premium feature: Unlock Owner Information
+				},
+			});
 
-		created++;
+			created++;
+		}
 
 		return {
 			type: "FeatureCollection",
@@ -313,7 +314,7 @@ function App() {
 							}}
 						/>
 					</Source>
-				)}}
+				)}
 
 				{/* Real Parcels (if any) */}
 				{parcels && parcels.features && parcels.features.length > 0 && (
