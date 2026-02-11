@@ -313,7 +313,7 @@ function App() {
 
 			{/* Splash Screen */}
 			{showSplash && (
-				<div className="fixed inset-0 z-50 bg-gradient-to-br from-gray-900 via-green-900 to-gray-800 flex flex-col items-center justify-center">
+				<div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
 					<div className="text-center space-y-6 animate-fade-in">
 						<h2
 							className="text-neon-green text-4xl md:text-5xl font-bold tracking-wider uppercase"
