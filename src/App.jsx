@@ -35,17 +35,36 @@ function App() {
 	const { parcels, selectedParcelData, handleMapClick, loadParcelsForBounds, isLoading, loadingParcels } =
 		useMissouriParcels();
 
-	// Generate fake parcels around a center point
+	// Generate fake parcels around a center point (no overlapping)
 	const generateFakeParcels = (centerLat, centerLng, count = 100) => {
 		const features = [];
 		const acreOptions = [0.5, 1, 2, 100];
+		const usedBounds = []; // Track used parcel boundaries to prevent overlaps
 
 		// Conversion factors: roughly 1 acre = 0.0015625 square miles
 		// At Missouri latitude (~38°), 1 degree lat ≈ 69 miles, 1 degree lng ≈ 54 miles
 		const acreToDegreesLat = (acres) => Math.sqrt(acres * 0.0015625) / 69;
 		const acreToDegreesLng = (acres) => Math.sqrt(acres * 0.0015625) / 54;
 
-		for (let i = 0; i < count; i++) {
+		// Check if parcel bounds overlap with existing parcels
+		const boundsOverlap = (minLng, maxLng, minLat, maxLat) => {
+			return usedBounds.some((bound) => {
+				return !(
+					maxLng < bound.minLng ||
+					minLng > bound.maxLng ||
+					maxLat < bound.minLat ||
+					minLat > bound.maxLat
+				);
+			});
+		};
+
+		let created = 0;
+		let attempts = 0;
+		const maxAttempts = count * 3; // Allow multiple attempts to place parcels
+
+		while (created < count && attempts < maxAttempts) {
+			attempts++;
+
 			const acres = acreOptions[Math.floor(Math.random() * acreOptions.length)];
 			const latOffset = (Math.random() - 0.5) * 0.05; // Spread within ~1.5 miles
 			const lngOffset = (Math.random() - 0.5) * 0.05;
@@ -56,14 +75,27 @@ function App() {
 			const latDelta = acreToDegreesLat(acres) / 2;
 			const lngDelta = acreToDegreesLng(acres) / 2;
 
+			const minLng = parcelLng - lngDelta;
+			const maxLng = parcelLng + lngDelta;
+			const minLat = parcelLat - latDelta;
+			const maxLat = parcelLat + latDelta;
+
+			// Skip if this parcel would overlap with existing parcels
+			if (boundsOverlap(minLng, maxLng, minLat, maxLat)) {
+				continue;
+			}
+
+			// Track this parcel's bounds
+			usedBounds.push({ minLng, maxLng, minLat, maxLat });
+
 			// Create rectangular parcel
 			const coordinates = [
 				[
-					[parcelLng - lngDelta, parcelLat - latDelta],
-					[parcelLng + lngDelta, parcelLat - latDelta],
-					[parcelLng + lngDelta, parcelLat + latDelta],
-					[parcelLng - lngDelta, parcelLat + latDelta],
-					[parcelLng - lngDelta, parcelLat - latDelta],
+					[minLng, minLat],
+					[maxLng, minLat],
+					[maxLng, maxLat],
+					[minLng, maxLat],
+					[minLng, minLat],
 				],
 			];
 
@@ -74,13 +106,15 @@ function App() {
 					coordinates: coordinates,
 				},
 				properties: {
-					PARCEL_ID: `FAKE-${i + 1}`,
-					OWNER: `Property Owner ${i + 1}`,
-					ACRES_CALC: acres,
-					ADDRESS: `${Math.floor(Math.random() * 9999)} County Road ${Math.floor(Math.random() * 999)}`,
-				},
-			});
-		}
+				PARCEL_ID: `FAKE-${created + 1}`,
+				OWNER: `Property Owner ${created + 1}`,
+				ACRES_CALC: acres,
+				ADDRESS: `${Math.floor(Math.random() * 9999)} County Road ${Math.floor(Math.random() * 999)}`,
+				ownerInfoLocked: true, // Future premium feature: Unlock Owner Information
+			},
+		});
+
+		created++;
 
 		return {
 			type: "FeatureCollection",
