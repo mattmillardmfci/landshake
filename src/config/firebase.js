@@ -15,7 +15,7 @@ const firebaseConfig = {
 	projectId: "landshake-ea1e4",
 	storageBucket: "landshake-ea1e4.firebasestorage.app",
 	messagingSenderId: "312404070498",
-	appId: "1:312404070498:web:cb417e5e0927dc7c1a413b"
+	appId: "1:312404070498:web:cb417e5e0927dc7c1a413b",
 };
 
 // Initialize Firebase

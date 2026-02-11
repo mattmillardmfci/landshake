@@ -39,7 +39,7 @@ function App() {
 	const generateFakeParcels = (centerLat, centerLng, count = 100) => {
 		const features = [];
 		const acreOptions = [0.5, 1, 2, 100];
-		
+
 		// Conversion factors: roughly 1 acre = 0.0015625 square miles
 		// At Missouri latitude (~38°), 1 degree lat ≈ 69 miles, 1 degree lng ≈ 54 miles
 		const acreToDegreesLat = (acres) => Math.sqrt(acres * 0.0015625) / 69;
@@ -49,21 +49,23 @@ function App() {
 			const acres = acreOptions[Math.floor(Math.random() * acreOptions.length)];
 			const latOffset = (Math.random() - 0.5) * 0.05; // Spread within ~1.5 miles
 			const lngOffset = (Math.random() - 0.5) * 0.05;
-			
+
 			const parcelLat = centerLat + latOffset;
 			const parcelLng = centerLng + lngOffset;
-			
+
 			const latDelta = acreToDegreesLat(acres) / 2;
 			const lngDelta = acreToDegreesLng(acres) / 2;
 
 			// Create rectangular parcel
-			const coordinates = [[
-				[parcelLng - lngDelta, parcelLat - latDelta],
-				[parcelLng + lngDelta, parcelLat - latDelta],
-				[parcelLng + lngDelta, parcelLat + latDelta],
-				[parcelLng - lngDelta, parcelLat + latDelta],
-				[parcelLng - lngDelta, parcelLat - latDelta],
-			]];
+			const coordinates = [
+				[
+					[parcelLng - lngDelta, parcelLat - latDelta],
+					[parcelLng + lngDelta, parcelLat - latDelta],
+					[parcelLng + lngDelta, parcelLat + latDelta],
+					[parcelLng - lngDelta, parcelLat + latDelta],
+					[parcelLng - lngDelta, parcelLat - latDelta],
+				],
+			];
 
 			features.push({
 				type: "Feature",
@@ -152,28 +154,27 @@ function App() {
 
 	const onMapClick = async (event) => {
 		console.log("App: Map clicked at:", event.lngLat);
-		
+
 		// Check if click is on a fake parcel
 		if (fakeParcels && fakeParcels.features) {
 			const clickPoint = [event.lngLat.lng, event.lngLat.lat];
-			
+
 			for (const feature of fakeParcels.features) {
 				// Simple point-in-polygon check (for rectangular parcels)
 				const coords = feature.geometry.coordinates[0];
-				const minLng = Math.min(...coords.map(c => c[0]));
-				const maxLng = Math.max(...coords.map(c => c[0]));
-				const minLat = Math.min(...coords.map(c => c[1]));
-				const maxLat = Math.max(...coords.map(c => c[1]));
-				
-				if (clickPoint[0] >= minLng && clickPoint[0] <= maxLng && 
-				    clickPoint[1] >= minLat && clickPoint[1] <= maxLat) {
+				const minLng = Math.min(...coords.map((c) => c[0]));
+				const maxLng = Math.max(...coords.map((c) => c[0]));
+				const minLat = Math.min(...coords.map((c) => c[1]));
+				const maxLat = Math.max(...coords.map((c) => c[1]));
+
+				if (clickPoint[0] >= minLng && clickPoint[0] <= maxLng && clickPoint[1] >= minLat && clickPoint[1] <= maxLat) {
 					console.log("Clicked on fake parcel:", feature);
 					setSelectedParcel(feature);
 					return;
 				}
 			}
 		}
-		
+
 		// Otherwise try real parcel data
 		const parcel = await handleMapClick(event);
 		console.log("App: Received parcel from handleMapClick:", parcel);
@@ -275,7 +276,7 @@ function App() {
 						/>
 					</Source>
 				)}
-				
+
 				{/* Real Parcels (if any) */}
 				{parcels && parcels.features && parcels.features.length > 0 && (
 					<Source id="parcels" type="geojson" data={parcels}>
@@ -314,14 +315,14 @@ function App() {
 			{showSplash && (
 				<div className="fixed inset-0 z-50 bg-gradient-to-br from-gray-900 via-green-900 to-gray-800 flex flex-col items-center justify-center">
 					<div className="text-center space-y-6 animate-fade-in">
-						<h2 className="text-neon-green text-4xl md:text-5xl font-bold tracking-wider uppercase" style={{ fontFamily: 'Impact, sans-serif', textShadow: '0 0 20px rgba(57, 255, 20, 0.5)' }}>
-							Where Property Lines Become<br />Permission Granted
+						<h2
+							className="text-neon-green text-4xl md:text-5xl font-bold tracking-wider uppercase"
+							style={{ fontFamily: "Impact, sans-serif", textShadow: "0 0 20px rgba(57, 255, 20, 0.5)" }}>
+							Where Property Lines Become
+							<br />
+							Permission Granted
 						</h2>
-						<img 
-							src="/logo.png" 
-							alt="Landshake Logo" 
-							className="w-64 h-64 mx-auto object-contain drop-shadow-2xl"
-						/>
+						<img src="/logo.png" alt="Landshake Logo" className="w-64 h-64 mx-auto object-contain drop-shadow-2xl" />
 					</div>
 				</div>
 			)}
