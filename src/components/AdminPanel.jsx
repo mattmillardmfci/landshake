@@ -87,8 +87,8 @@ export default function AdminPanel({ onLocationClick }) {
 				</button>
 			</div>
 
-			{/* Content */}
-			<div className="flex-1 overflow-y-auto bg-gray-900 p-4">
+			{/* Content - with explicit background */}
+			<div className="flex-1 overflow-y-auto bg-gray-900 p-4 flex flex-col">
 				{!authenticated ? (
 					<form onSubmit={handleLogin} className="space-y-3">
 						<p className="text-gray-300 text-sm">Enter admin password:</p>

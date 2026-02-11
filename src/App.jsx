@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import useMissouriParcels from "./hooks/useMissouriParcels";
 import ContactCard from "./components/ContactCard";
 import AdminPanel from "./components/AdminPanel";
+import DebugPanel from "./components/DebugPanel";
 import { geocodeAddress } from "./services/geocodingService";
 import { logQuery, logGeolocation } from "./services/queryLogger";
 
@@ -264,6 +265,9 @@ function App() {
 
 			{/* Admin Panel */}
 			<AdminPanel onLocationClick={handleAdminLocationClick} />
+
+			{/* Debug Panel */}
+			<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} isLoading={isLoading} />
 		</div>
 	);
 }
