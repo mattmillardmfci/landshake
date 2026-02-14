@@ -1,0 +1,13 @@
+{
+  "bounds": {
+    "minLng": -92.55,
+    "maxLng": -91.73,
+    "minLat": 38.35,
+    "maxLat": 38.79
+  },
+  "grid": {
+    "cols": 4,
+    "rows": 4
+  },
+  "tiles": []
+}

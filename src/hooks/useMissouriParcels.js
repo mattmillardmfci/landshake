@@ -31,9 +31,9 @@ const useMissouriParcels = () => {
 				console.log("📡 Creating fetch request for parcel data...");
 				const controller = new AbortController();
 				const timeoutId = setTimeout(() => {
-					console.error("⏰ 30 second timeout triggered, aborting fetch...");
+					console.error("⏰ 120 second timeout triggered, aborting fetch...");
 					controller.abort();
-				}, 30000);
+				}, 120000); // Increased to 2 minutes for large files
 
 				console.log("🔗 Fetch URL: /data/cole_parcels.geojson");
 				const response = await fetch("/data/cole_parcels.geojson", {
@@ -50,7 +50,8 @@ const useMissouriParcels = () => {
 
 				console.log("📦 Response received, parsing JSON...");
 				const data = await response.json();
-				console.log("✨ JSON parsed successfully, size:", JSON.stringify(data).length / 1024 / 1024, "MB");
+				const mbSize = (JSON.stringify(data).length / 1024 / 1024).toFixed(2);
+				console.log("✨ JSON parsed successfully,", data.features?.length ?? 0, "features,", mbSize, "MB");
 
 				if (!data || data.type !== "FeatureCollection") {
 					throw new Error("Parcel dataset is not a FeatureCollection.");
@@ -63,7 +64,7 @@ const useMissouriParcels = () => {
 					console.error("⚠️ FETCH ABORTED");
 					console.error("Error name:", error.name);
 					console.error("Error message:", error.message);
-					console.error("Reason: Likely due to Vercel timeout or exceeded data size");
+					console.error("Reason: File too large or network timeout");
 				} else {
 					console.error("❌ Failed to load local parcel data:", error);
 					console.error("Error:", error.message);

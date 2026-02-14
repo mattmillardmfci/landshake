@@ -36,13 +36,14 @@ export async function trackVisitor(location = null) {
 			userAgent: data.userAgent || navigator.userAgent || "Unknown",
 			referrer: data.referrer || document.referrer || "Direct",
 			timestamp: serverTimestamp(),
-			location: location?.latitude && location?.longitude 
-				? { 
-					latitude: location.latitude, 
-					longitude: location.longitude, 
-					accuracy: location.accuracy 
-				} 
-				: null,
+			location:
+				location?.latitude && location?.longitude
+					? {
+							latitude: location.latitude,
+							longitude: location.longitude,
+							accuracy: location.accuracy,
+						}
+					: null,
 		};
 
 		const docRef = await addDoc(collection(db, "visitors"), visitorData);
