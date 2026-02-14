@@ -57,6 +57,11 @@ function App() {
 	const [drawnPoints, setDrawnPoints] = useState([]);
 	const [drawnLines, setDrawnLines] = useState([]);
 
+	// Cached areas management
+	const [cachedAreas, setCachedAreas] = useState([]);
+	const [selectedAreaId, setSelectedAreaId] = useState(null);
+	const areaIdRef = useRef(0); // Counter for unique area IDs
+
 	// Splash screen timer
 	useEffect(() => {
 		const timer = setTimeout(() => setShowSplash(false), 5000);
@@ -395,9 +400,24 @@ function App() {
 			// Reset draw mode
 			setDrawnPoints([]);
 			setDrawnLines([]);
+			setSelectedAreaId(null);
 		}
 		setShowToolsMenu(false);
 	}, [drawMode]);
+
+	// Distance helper function
+	const getDistance = (point1, point2) => {
+		const R = 6371e3; // Earth radius in meters
+		const φ1 = (point1[1] * Math.PI) / 180;
+		const φ2 = (point2[1] * Math.PI) / 180;
+		const Δφ = ((point2[1] - point1[1]) * Math.PI) / 180;
+		const Δλ = ((point2[0] - point1[0]) * Math.PI) / 180;
+
+		const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return R * c;
+	};
 
 	// Handle map click for draw mode
 	const handleDrawClick = useCallback(
@@ -407,6 +427,44 @@ function App() {
 			const { lngLat } = event;
 			const newPoint = [lngLat.lng, lngLat.lat];
 
+			// Check if this point closes the polygon (connects back to starting point)
+			if (drawnPoints.length >= 2) {
+				const startPoint = drawnPoints[0];
+				const distance = getDistance(newPoint, startPoint);
+
+				// If within 10 meters of starting point, close the polygon
+				if (distance < 10) {
+					// Create polygon feature
+					const polygonCoords = [...drawnPoints, startPoint]; // Close the ring
+					const areaFeature = {
+						type: "Feature",
+						id: areaIdRef.current++,
+						geometry: {
+							type: "Polygon",
+							coordinates: [polygonCoords],
+						},
+						properties: {
+							color: "#39FF14",
+							fillColor: "#39FF14",
+							fillOpacity: 0.2,
+							lineOpacity: 0.8,
+							lineWidth: 3,
+						},
+					};
+
+					// Add to cached areas
+					setCachedAreas((prev) => [...prev, areaFeature]);
+					setSelectedAreaId(areaFeature.id);
+
+					// Reset draw mode
+					setDrawnPoints([]);
+					setDrawnLines([]);
+					setDrawMode(false);
+					return;
+				}
+			}
+
+			// Normal case: add point and draw line
 			setDrawnPoints((prev) => [...prev, newPoint]);
 
 			if (drawnPoints.length > 0) {
@@ -472,13 +530,60 @@ function App() {
 		[tilesManifest, updateVisibleTiles, getVisibleParcels],
 	);
 
+	// Area management functions
+	const updateAreaProperty = (areaId, property, value) => {
+		setCachedAreas((prev) =>
+			prev.map((area) =>
+				area.id === areaId
+					? { ...area, properties: { ...area.properties, [property]: value } }
+					: area,
+			),
+		);
+	};
+
+	const deleteArea = (areaId) => {
+		setCachedAreas((prev) => prev.filter((area) => area.id !== areaId));
+		if (selectedAreaId === areaId) {
+			setSelectedAreaId(null);
+		}
+	};
+
+	const selectedArea = cachedAreas.find((area) => area.id === selectedAreaId);
+
+	// Handle map clicks with area selection support
+	const handleMapClickWithAreas = useCallback(
+		(e) => {
+			if (drawMode) {
+				handleDrawClick(e);
+				return;
+			}
+
+			// Check if clicking on a cached area
+			const features = e.target.querySourceFeatures("cached-areas", {
+				layers: ["cached-areas-fill"],
+			});
+
+			if (features && features.length > 0) {
+				const clickedArea = cachedAreas.find((area) => area.id === features[0].id);
+				if (clickedArea) {
+					setSelectedAreaId(clickedArea.id);
+					return;
+				}
+			}
+
+			// Otherwise, handle normal parcel click
+			handleMapClick(e);
+		},
+		[drawMode, handleDrawClick, handleMapClick, cachedAreas],
+	);
+
 	return (
 		<div className="relative w-full h-screen overflow-hidden bg-black">
 			{/* Map */}
 			<Map
 				{...viewState}
 				onMove={handleMapMove}
-				onClick={(e) => (drawMode ? handleDrawClick(e) : handleMapClick(e))}
+				onClick={handleMapClickWithAreas}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
 				minZoom={4}
@@ -615,6 +720,51 @@ function App() {
 								"circle-opacity": 1,
 							}}
 						/>
+					</Source>
+				)}
+
+				{/* Cached Areas */}
+				{cachedAreas.length > 0 && (
+					<Source
+						id="cached-areas"
+						type="geojson"
+						data={{
+							type: "FeatureCollection",
+							features: cachedAreas,
+						}}>
+						{/* Area fills */}
+						<Layer
+							id="cached-areas-fill"
+							type="fill"
+							paint={{
+								"fill-color": ["get", "fillColor", ["object", ["get", "properties"]]],
+								"fill-opacity": ["get", "fillOpacity", ["object", ["get", "properties"]]],
+							}}
+						/>
+						{/* Area borders */}
+						<Layer
+							id="cached-areas-line"
+							type="line"
+							paint={{
+								"line-color": ["get", "color", ["object", ["get", "properties"]]],
+								"line-width": ["get", "lineWidth", ["object", ["get", "properties"]]],
+								"line-opacity": ["get", "lineOpacity", ["object", ["get", "properties"]]],
+							}}
+						/>
+						{/* Selected area highlight */}
+						{selectedAreaId !== null && (
+							<Layer
+								id="cached-areas-selected"
+								type="line"
+								filter={["==", ["id"], selectedAreaId]}
+								paint={{
+									"line-color": "#FFFFFF",
+									"line-width": 4,
+									"line-opacity": 1,
+									"line-dasharray": [4, 2],
+								}}
+							/>
+						)}
 					</Source>
 				)}
 			</Map>
@@ -764,12 +914,86 @@ function App() {
 
 			{/* Bottom Navigation */}
 			<div 
-				className="absolute left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 z-10 px-4 py-3"
+				className="absolute left-0 right-0 z-10 px-4 py-3 space-y-2"
 				style={{
 					bottom: 'max(0px, env(safe-area-inset-bottom, 0px))',
 				}}
 			>
-				<div className="flex gap-4 justify-center items-center">
+				{/* Tools Menu (Secondary Nav) - Appears First */}
+				{showToolsMenu && (
+					<div className="bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md p-3">
+						<div className="flex gap-2 flex-wrap justify-center">
+							<button
+								onClick={handleDrawLineTool}
+								className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+									drawMode
+										? "bg-orange-500 text-black"
+										: "bg-black/50 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
+								}`}>
+								{drawMode ? "✓ Draw Area" : "Draw Area"}
+							</button>
+						</div>
+					</div>
+				)}
+
+				{/* Area Editing Menu - Appears if Area Selected */}
+				{selectedArea && (
+					<div className="bg-black/70 border border-amber-500/30 rounded-lg backdrop-blur-md p-3">
+						<div className="space-y-2">
+							<p className="text-xs text-amber-400 text-center font-semibold">Area Editor</p>
+							<div className="flex gap-2 flex-wrap justify-center">
+								{/* Line Color */}
+								<div className="flex items-center gap-2">
+									<label className="text-xs text-gray-400">Line:</label>
+									<input
+										type="color"
+										value={selectedArea.properties.color}
+										onChange={(e) => updateAreaProperty(selectedAreaId, "color", e.target.value)}
+										className="w-8 h-8 rounded cursor-pointer"
+										title="Line Color"
+									/>
+								</div>
+
+								{/* Fill Color */}
+								<div className="flex items-center gap-2">
+									<label className="text-xs text-gray-400">Fill:</label>
+									<input
+										type="color"
+										value={selectedArea.properties.fillColor}
+										onChange={(e) => updateAreaProperty(selectedAreaId, "fillColor", e.target.value)}
+										className="w-8 h-8 rounded cursor-pointer"
+										title="Fill Color"
+									/>
+								</div>
+
+								{/* Opacity */}
+								<div className="flex items-center gap-2">
+									<label className="text-xs text-gray-400">Opacity:</label>
+									<input
+										type="range"
+										min="0"
+										max="1"
+										step="0.1"
+										value={selectedArea.properties.fillOpacity}
+										onChange={(e) => updateAreaProperty(selectedAreaId, "fillOpacity", parseFloat(e.target.value))}
+										className="w-16 h-1.5 rounded cursor-pointer"
+										title="Fill Opacity"
+									/>
+								</div>
+
+								{/* Delete Button */}
+								<button
+									onClick={() => deleteArea(selectedAreaId)}
+									className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
+									Delete
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Main Navigation Buttons */}
+				<div className="bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
 					{/* Debug Button */}
 					<button
 						onClick={() => setActiveNav(activeNav === "debug" ? null : "debug")}
@@ -792,7 +1016,7 @@ function App() {
 								? "bg-neon-green text-black"
 								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
 						}`}>
-						tools {showToolsMenu && "▲"}
+						tools {showToolsMenu && "▼"}
 					</button>
 
 					{/* Admin Button */}
@@ -806,23 +1030,6 @@ function App() {
 						admin
 					</button>
 				</div>
-
-				{/* Tools Menu (Secondary Nav) */}
-				{showToolsMenu && (
-					<div className="mt-3 p-3 bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md">
-						<div className="flex gap-2 flex-wrap justify-center">
-							<button
-								onClick={handleDrawLineTool}
-								className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-									drawMode
-										? "bg-orange-500 text-black"
-										: "bg-black/50 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
-								}`}>
-								{drawMode ? "✓ Draw Line" : "Draw Line"}
-							</button>
-						</div>
-					</div>
-				)}
 			</div>
 		</div>
 	);
