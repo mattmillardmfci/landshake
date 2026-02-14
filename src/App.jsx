@@ -62,6 +62,13 @@ function App() {
 	const [selectedAreaId, setSelectedAreaId] = useState(null);
 	const areaIdRef = useRef(0); // Counter for unique area IDs
 
+	// Pins management
+	const [pins, setPins] = useState([]);
+	const [selectedPinId, setSelectedPinId] = useState(null);
+	const [pinMode, setPinMode] = useState(false);
+	const [draggingPinId, setDraggingPinId] = useState(null);
+	const pinIdRef = useRef(0); // Counter for unique pin IDs
+
 	// Splash screen timer
 	useEffect(() => {
 		const timer = setTimeout(() => setShowSplash(false), 5000);
@@ -402,8 +409,20 @@ function App() {
 			setDrawnLines([]);
 			setSelectedAreaId(null);
 		}
+		setPinMode(false);
 		setShowToolsMenu(false);
 	}, [drawMode]);
+
+	// Handle drop pin mode
+	const handleDropPinTool = useCallback(() => {
+		setPinMode(!pinMode);
+		if (pinMode) {
+			// Reset pin mode
+			setSelectedPinId(null);
+		}
+		setDrawMode(false);
+		setShowToolsMenu(false);
+	}, [pinMode]);
 
 	// Distance helper function
 	const getDistance = (point1, point2) => {
@@ -483,6 +502,40 @@ function App() {
 		[drawMode, drawnPoints],
 	);
 
+	// Handle pin dragging
+	const handleMapMouseDown = useCallback(
+		(e) => {
+			if (!selectedPin) return;
+
+			// Check if clicking on the selected pin
+			const features = e.target.querySourceFeatures("pins", {
+				layers: ["pins-layer"],
+			});
+
+			if (features && features.length > 0 && features[0].id === selectedPinId) {
+				setDraggingPinId(selectedPinId);
+				e.target.getCanvas().style.cursor = "grabbing";
+			}
+		},
+		[selectedPinId, selectedPin],
+	);
+
+	const handleMapMouseMove = useCallback(
+		(e) => {
+			if (!draggingPinId) return;
+
+			const { lngLat } = e;
+			updatePinCoordinates(draggingPinId, lngLat.lng, lngLat.lat);
+		},
+		[draggingPinId],
+	);
+
+	const handleMapMouseUp = useCallback(() => {
+		if (draggingPinId) {
+			setDraggingPinId(null);
+		}
+	}, [draggingPinId]);
+
 	// Map onMove handler for zoom-gated parcel loading
 	const handleMapMove = useCallback(
 		(evt) => {
@@ -534,9 +587,7 @@ function App() {
 	const updateAreaProperty = (areaId, property, value) => {
 		setCachedAreas((prev) =>
 			prev.map((area) =>
-				area.id === areaId
-					? { ...area, properties: { ...area.properties, [property]: value } }
-					: area,
+				area.id === areaId ? { ...area, properties: { ...area.properties, [property]: value } } : area,
 			),
 		);
 	};
@@ -550,12 +601,77 @@ function App() {
 
 	const selectedArea = cachedAreas.find((area) => area.id === selectedAreaId);
 
+	// Pin management functions
+	const updatePinProperty = (pinId, property, value) => {
+		setPins((prev) =>
+			prev.map((pin) =>
+				pin.id === pinId
+					? { ...pin, properties: { ...pin.properties, [property]: value } }
+					: pin,
+			),
+		);
+	};
+
+	const updatePinCoordinates = (pinId, lng, lat) => {
+		setPins((prev) =>
+			prev.map((pin) =>
+				pin.id === pinId
+					? { ...pin, geometry: { type: "Point", coordinates: [lng, lat] } }
+					: pin,
+			),
+		);
+	};
+
+	const deletePin = (pinId) => {
+		setPins((prev) => prev.filter((pin) => pin.id !== pinId));
+		if (selectedPinId === pinId) {
+			setSelectedPinId(null);
+		}
+	};
+
+	const selectedPin = pins.find((pin) => pin.id === selectedPinId);
+
 	// Handle map clicks with area selection support
 	const handleMapClickWithAreas = useCallback(
 		(e) => {
 			if (drawMode) {
 				handleDrawClick(e);
 				return;
+			}
+
+			// Handle pin placement in pin mode
+			if (pinMode) {
+				const { lngLat } = e;
+				const newPin = {
+					type: "Feature",
+					id: pinIdRef.current++,
+					geometry: {
+						type: "Point",
+						coordinates: [lngLat.lng, lngLat.lat],
+					},
+					properties: {
+						color: "#FF6B35",
+						icon: "📍", // Default pin icon
+						label: "Pin",
+					},
+				};
+				setPins((prev) => [...prev, newPin]);
+				setSelectedPinId(newPin.id);
+				setPinMode(false);
+				return;
+			}
+
+			// Check if clicking on a pin
+			const pinFeatures = e.target.querySourceFeatures("pins", {
+				layers: ["pins-layer"],
+			});
+
+			if (pinFeatures && pinFeatures.length > 0) {
+				const clickedPin = pins.find((pin) => pin.id === pinFeatures[0].id);
+				if (clickedPin) {
+					setSelectedPinId(clickedPin.id);
+					return;
+				}
 			}
 
 			// Check if clicking on a cached area
@@ -574,7 +690,7 @@ function App() {
 			// Otherwise, handle normal parcel click
 			handleMapClick(e);
 		},
-		[drawMode, handleDrawClick, handleMapClick, cachedAreas],
+		[drawMode, pinMode, handleDrawClick, handleMapClick, cachedAreas, pins],
 	);
 
 	return (
@@ -584,11 +700,15 @@ function App() {
 				{...viewState}
 				onMove={handleMapMove}
 				onClick={handleMapClickWithAreas}
+				onMouseDown={handleMapMouseDown}
+				onMouseMove={handleMapMouseMove}
+				onMouseUp={handleMapMouseUp}
+				onMouseLeave={handleMapMouseUp}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
 				minZoom={4}
 				maxZoom={20}
-				cursor={drawMode ? "crosshair" : "pointer"}>
+				cursor={draggingPinId ? "grabbing" : drawMode ? "crosshair" : "pointer"}>
 				{/* All Visible Parcels */}
 				{visibleParcels && visibleParcels.features && visibleParcels.features.length > 0 && (
 					<Source id="visible-parcels" type="geojson" data={visibleParcels}>
@@ -767,6 +887,34 @@ function App() {
 						)}
 					</Source>
 				)}
+
+				{/* Pins */}
+				{pins.length > 0 && (
+					<Source
+						id="pins"
+						type="geojson"
+						data={{
+							type: "FeatureCollection",
+							features: pins,
+						}}>
+						<Layer
+							id="pins-layer"
+							type="symbol"
+							layout={{
+								"icon-image": "default-marker",
+								"text-field": ["get", "icon", ["object", ["get", "properties"]]],
+								"text-size": 24,
+								"text-offset": [0, -1.5],
+								"text-allow-overlap": true,
+							}}
+							paint={{
+								"text-color": ["get", "color", ["object", ["get", "properties"]]],
+								"text-halo-color": "#000000",
+								"text-halo-width": 1,
+							}}
+						/>
+					</Source>
+				)}
 			</Map>
 
 			{/* Splash Screen */}
@@ -913,12 +1061,11 @@ function App() {
 			<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />
 
 			{/* Bottom Navigation */}
-			<div 
+			<div
 				className="absolute left-0 right-0 z-10 px-4 py-3 space-y-2"
 				style={{
-					bottom: 'max(0px, env(safe-area-inset-bottom, 0px))',
-				}}
-			>
+					bottom: "max(0px, env(safe-area-inset-bottom, 0px))",
+				}}>
 				{/* Tools Menu (Secondary Nav) - Appears First */}
 				{showToolsMenu && (
 					<div className="bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md p-3">
@@ -931,6 +1078,15 @@ function App() {
 										: "bg-black/50 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
 								}`}>
 								{drawMode ? "✓ Draw Area" : "Draw Area"}
+							</button>
+							<button
+								onClick={handleDropPinTool}
+								className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+									pinMode
+										? "bg-blue-500 text-black"
+										: "bg-black/50 border border-blue-500/50 text-blue-400 hover:bg-blue-500/20"
+								}`}>
+								{pinMode ? "✓ Drop Pin" : "Drop Pin"}
 							</button>
 						</div>
 					</div>
@@ -992,7 +1148,89 @@ function App() {
 					</div>
 				)}
 
-				{/* Main Navigation Buttons */}
+				{/* Pin Editing Menu - Appears if Pin Selected */}
+				{selectedPin && (
+					<div className="bg-black/70 border border-blue-500/30 rounded-lg backdrop-blur-md p-3">
+						<div className="space-y-2">
+							<p className="text-xs text-blue-400 text-center font-semibold">Pin Editor</p>
+							<div className="space-y-2">
+								{/* Pin Color */}
+								<div className="flex items-center gap-2 justify-center">
+									<label className="text-xs text-gray-400">Color:</label>
+									<input
+										type="color"
+										value={selectedPin.properties.color}
+										onChange={(e) => updatePinProperty(selectedPinId, "color", e.target.value)}
+										className="w-8 h-8 rounded cursor-pointer"
+										title="Pin Color"
+									/>
+								</div>
+
+								{/* Icon Selection */}
+								<div className="flex flex-wrap gap-2 justify-center">
+									<p className="text-xs text-gray-400 w-full text-center">Icon:</p>
+									<button
+										onClick={() => updatePinProperty(selectedPinId, "icon", "📍")}
+										className={`px-3 py-1 rounded-lg text-lg transition ${
+											selectedPin.properties.icon === "📍"
+												? "bg-blue-500 text-black"
+												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
+										}`}
+										title="Pin">
+										📍
+									</button>
+									<button
+										onClick={() => updatePinProperty(selectedPinId, "icon", "🦌")}
+										className={`px-3 py-1 rounded-lg text-lg transition ${
+											selectedPin.properties.icon === "🦌"
+												? "bg-blue-500 text-black"
+												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
+										}`}
+										title="Deer">
+										🦌
+									</button>
+									<button
+										onClick={() => updatePinProperty(selectedPinId, "icon", "🦃")}
+										className={`px-3 py-1 rounded-lg text-lg transition ${
+											selectedPin.properties.icon === "🦃"
+												? "bg-blue-500 text-black"
+												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
+										}`}
+										title="Turkey">
+										🦃
+									</button>
+									<button
+										onClick={() => updatePinProperty(selectedPinId, "icon", "⛺")}
+										className={`px-3 py-1 rounded-lg text-lg transition ${
+											selectedPin.properties.icon === "⛺"
+												? "bg-blue-500 text-black"
+												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
+										}`}
+										title="Deer Stand">
+										⛺
+									</button>
+									<button
+										onClick={() => updatePinProperty(selectedPinId, "icon", "🏚️")}
+										className={`px-3 py-1 rounded-lg text-lg transition ${
+											selectedPin.properties.icon === "🏚️"
+												? "bg-blue-500 text-black"
+												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
+										}`}
+										title="Deer Blind">
+										🏚️
+									</button>
+								</div>
+
+								{/* Delete Button */}
+								<button
+									onClick={() => deletePin(selectedPinId)}
+									className="w-full px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
+									Delete Pin
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
 				<div className="bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
 					{/* Debug Button */}
 					<button
