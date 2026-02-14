@@ -1,23 +1,8 @@
 /**
  * Track Visitor API
- * Logs visitor IP addresses and metadata to Firebase
+ * Returns visitor IP address and metadata (no Firebase dependency)
+ * The client-side will write to Firebase using the standard SDK
  */
-
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
-
-// Initialize Firebase Admin SDK
-if (!getApps().length) {
-	initializeApp({
-		credential: cert({
-			projectId: process.env.FIREBASE_PROJECT_ID,
-			clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-			privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-		}),
-	});
-}
-
-const db = getFirestore();
 
 export default async function handler(req, res) {
 	// Set CORS headers
@@ -39,43 +24,30 @@ export default async function handler(req, res) {
 	}
 
 	try {
-		// Extract IP address from request
+		// Extract IP address from request headers
 		const ip =
-			req.headers["x-forwarded-for"]?.split(",")[0] ||
+			req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
 			req.headers["x-real-ip"] ||
-			req.socket.remoteAddress ||
+			req.connection?.remoteAddress ||
+			req.socket?.remoteAddress ||
 			"Unknown";
 
 		// Get additional metadata
 		const userAgent = req.headers["user-agent"] || "Unknown";
 		const referrer = req.headers["referer"] || req.headers["referrer"] || "Direct";
 
-		// Get location data if provided
-		const { latitude, longitude, accuracy } = req.body || {};
-
-		// Create visitor record
-		const visitorData = {
-			ip,
-			userAgent,
-			referrer,
-			timestamp: Timestamp.now(),
-			location: latitude && longitude ? { latitude, longitude, accuracy } : null,
-		};
-
-		// Save to Firestore
-		const docRef = await db.collection("visitors").add(visitorData);
-
-		console.log("Visitor tracked:", { id: docRef.id, ip, location: visitorData.location });
+		console.log("Visitor info extracted:", { ip, userAgent, referrer });
 
 		return res.status(200).json({
 			success: true,
-			id: docRef.id,
 			ip,
+			userAgent,
+			referrer,
 		});
 	} catch (error) {
-		console.error("Error tracking visitor:", error);
+		console.error("Error extracting visitor info:", error);
 		return res.status(500).json({
-			error: "Failed to track visitor",
+			error: "Failed to extract visitor info",
 			message: error.message,
 		});
 	}
