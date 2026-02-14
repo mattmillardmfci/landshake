@@ -12,6 +12,7 @@ export default function DebugPanel({ viewState, selectedParcel, userLocation, is
 	const [lastTime, setLastTime] = useState(Date.now());
 	const [errors, setErrors] = useState([]);
 	const [expandedErrors, setExpandedErrors] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false);
 
 	// Simple FPS counter
 	useEffect(() => {
@@ -45,8 +46,34 @@ export default function DebugPanel({ viewState, selectedParcel, userLocation, is
 	}, []);
 
 	return (
-		<div className="fixed bottom-4 left-4 bg-black/80 backdrop-blur-sm border border-neon-green rounded-lg p-3 text-xs font-mono z-40 max-w-xs">
-			<div className="text-neon-green font-bold mb-2">DEBUG INFO</div>
+		<>
+			{/* Debug Toggle Button */}
+			{!isExpanded && (
+				<button
+					onClick={() => setIsExpanded(true)}
+					onTouchStart={(e) => e.stopPropagation()}
+					className="fixed bottom-4 left-4 bg-black/80 backdrop-blur-sm border border-neon-green rounded-lg px-3 py-2 text-xs font-mono z-40 text-neon-green hover:bg-neon-green hover:text-black transition-all"
+					style={{ touchAction: 'none' }}>
+					DEBUG
+				</button>
+			)}
+
+			{/* Debug Panel */}
+			{isExpanded && (
+				<div 
+					className="fixed bottom-4 left-4 bg-black/80 backdrop-blur-sm border border-neon-green rounded-lg p-3 text-xs font-mono z-40 max-w-xs"
+					onTouchStart={(e) => e.stopPropagation()}
+					style={{ touchAction: 'none' }}>
+					<div className="flex items-center justify-between mb-2">
+						<div className="text-neon-green font-bold">DEBUG INFO</div>
+						<button
+							onClick={() => setIsExpanded(false)}
+							onTouchStart={(e) => e.stopPropagation()}
+							className="text-gray-400 hover:text-neon-green transition-colors"
+							style={{ touchAction: 'none' }}>
+							✕
+						</button>
+					</div>
 
 			{/* FPS */}
 			<div className="text-gray-300 mb-2">
@@ -119,11 +146,14 @@ export default function DebugPanel({ viewState, selectedParcel, userLocation, is
 						clearErrors();
 						setErrors([]);
 					}}
-					className="w-full mt-2 text-xs py-1 px-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded border border-red-500/30 transition"
-				>
+					onTouchStart={(e) => e.stopPropagation()}
+					style={{ touchAction: 'none' }}
+					className="w-full mt-2 text-xs py-1 px-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded border border-red-500/30 transition">
 					Clear Errors
 				</button>
 			)}
-		</div>
+				</div>
+			)}
+		</>
 	);
 }
