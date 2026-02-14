@@ -334,43 +334,35 @@ function App() {
 						setFollowUserLocation(false);
 					}
 
-					// Update visible parcels based on viewport when zoomed in
-					// Parcel data bounds (corrected from actual coordinates)
-					const PARCEL_BOUNDS = {
-						west: -110.3,
-						east: -110.0,
-						south: 34.4,
-						north: 34.7,
-					};
-
-					if (evt.viewState.zoom >= 10 && localParcels?.features) {
+					// Use tile-based system if available and zoomed in
+					if (tilesManifest && evt.viewState.zoom >= 10) {
 						const map = evt.target;
 						const bounds = map.getBounds();
+						const viewportBounds = {
+							minLng: bounds.getWest(),
+							maxLng: bounds.getEast(),
+							minLat: bounds.getSouth(),
+							maxLat: bounds.getNorth(),
+						};
 
-						// Check if viewport overlaps with parcel area
-						const isInParcels = !(
-							bounds.getEast() < PARCEL_BOUNDS.west ||
-							bounds.getWest() > PARCEL_BOUNDS.east ||
-							bounds.getNorth() < PARCEL_BOUNDS.south ||
-							bounds.getSouth() > PARCEL_BOUNDS.north
-						);
+						// Update which tiles should be loaded for current viewport
+						updateVisibleTiles(viewportBounds);
 
-						if (isInParcels) {
-							// Show all parcels when in bounds
-							console.log(`🗺️ onMove: Viewport in parcel area at zoom ${evt.viewState.zoom.toFixed(1)} - showing ${localParcels.features.length} parcels`);
-							setVisibleParcels({
-								type: "FeatureCollection",
-								features: localParcels.features,
-							});
+						// Get combined GeoJSON of all visible tiles
+						const parcels = getVisibleParcels();
+						if (parcels && parcels.features && parcels.features.length > 0) {
+							console.log(`🎯 Tile-based display: ${parcels.features.length} parcels visible at zoom ${evt.viewState.zoom.toFixed(1)}`);
+							setVisibleParcels(parcels);
 						} else {
-							console.log("🗺️ onMove: Viewport outside parcel area - hiding parcels");
+							console.log("⚠️ No tiles contain data for current viewport");
 							setVisibleParcels(null);
 						}
 					} else {
-						if (evt.viewState.zoom < 10 && localParcels?.features) {
-							console.log(`🗺️ onMove: Zoom ${evt.viewState.zoom.toFixed(1)} < 10 - hiding parcels`);
-						} else if (!localParcels?.features) {
-							console.log("🗺️ onMove: Parcels not loaded yet");
+						// Below zoom 10 or no tiles available - hide parcels
+						if (evt.viewState.zoom < 10) {
+							console.log(`◀ Zoom ${evt.viewState.zoom.toFixed(1)} < 10 - parcels hidden`);
+						} else if (!tilesManifest) {
+							console.log("📦 Tile manifest not ready yet");
 						}
 						setVisibleParcels(null);
 					}

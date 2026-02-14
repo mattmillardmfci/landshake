@@ -73,19 +73,12 @@ window.fetch = function (...args) {
 			const duration = Date.now() - startTime;
 
 			// Log error with clear message
-			const errorMessage = error.name === "AbortError" ? "⚠️ FETCH ABORTED (normal during panning)" : error.message || String(error);
+			const errorMessage =
+				error.name === "AbortError" ? "⚠️ FETCH ABORTED (normal during panning)" : error.message || String(error);
 
 			// Only log non-abort errors to reduce console noise
 			if (error.name !== "AbortError") {
-				console.error(
-					"❌ FETCH ERROR:\n  URL:",
-					url,
-					"\n  Error:",
-					errorMessage,
-					"\n  Duration:",
-					duration,
-					"ms",
-				);
+				console.error("❌ FETCH ERROR:\n  URL:", url, "\n  Error:", errorMessage, "\n  Duration:", duration, "ms");
 			}
 
 			addError(
