@@ -505,7 +505,7 @@ function App() {
 	// Handle pin dragging
 	const handleMapMouseDown = useCallback(
 		(e) => {
-			if (!selectedPin) return;
+			if (!selectedPinId) return;
 
 			// Check if clicking on the selected pin
 			const features = e.target.querySourceFeatures("pins", {
@@ -517,7 +517,7 @@ function App() {
 				e.target.getCanvas().style.cursor = "grabbing";
 			}
 		},
-		[selectedPinId, selectedPin],
+		[selectedPinId],
 	);
 
 	const handleMapMouseMove = useCallback(
