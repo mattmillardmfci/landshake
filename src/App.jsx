@@ -7,6 +7,7 @@ import AdminPanel from "./components/AdminPanel";
 import DebugPanel from "./components/DebugPanel";
 import { geocodeAddress } from "./services/geocodingService";
 import { logQuery, logGeolocation } from "./services/queryLogger";
+import { trackVisitor } from "./services/visitorTracker";
 import "./services/errorTracker"; // Initialize error tracking
 
 // Missouri boundaries - Jefferson City center
@@ -35,6 +36,7 @@ function App() {
 	const hasCenteredOnUser = useRef(false);
 	const hasLoggedGeolocation = useRef(false);
 	const isUserPanning = useRef(false);
+	const hasTrackedVisitor = useRef(false);
 	const lastRawLocation = useRef(null);
 	const smoothedDisplayLocation = useRef(null);
 
@@ -48,6 +50,68 @@ function App() {
 		const timer = setTimeout(() => setShowSplash(false), 5000);
 		return () => clearTimeout(timer);
 	}, []);
+
+	// Track visitor on initial load
+	useEffect(() => {
+		if (!hasTrackedVisitor.current) {
+			trackVisitor();
+			hasTrackedVisitor.current = true;
+		}
+	}, []);
+
+	// Update visible parcels when localParcels loads or viewState changes
+	useEffect(() => {
+		const COLE_COUNTY_BOUNDS = {
+			west: -92.55,
+			east: -91.73,
+			south: 38.35,
+			north: 38.79,
+		};
+
+		if (viewState.zoom >= 15 && localParcels?.features) {
+			// Simple bounds check using viewState center
+			const centerLng = viewState.longitude;
+			const centerLat = viewState.latitude;
+
+			const isInColeCounty =
+				centerLng >= COLE_COUNTY_BOUNDS.west &&
+				centerLng <= COLE_COUNTY_BOUNDS.east &&
+				centerLat >= COLE_COUNTY_BOUNDS.south &&
+				centerLat <= COLE_COUNTY_BOUNDS.north;
+
+			if (isInColeCounty) {
+				// Filter parcels near the viewport center
+				const filtered = localParcels.features.filter((feature) => {
+					const bbox = feature.properties?.__bbox;
+					if (!bbox) return false;
+
+					// Check if parcel bbox is near the viewport center (rough check)
+					const parcelCenterLng = (bbox[0] + bbox[2]) / 2;
+					const parcelCenterLat = (bbox[1] + bbox[3]) / 2;
+					const distance = Math.sqrt(
+						Math.pow(parcelCenterLng - centerLng, 2) + Math.pow(parcelCenterLat - centerLat, 2),
+					);
+
+					// Show parcels within ~0.05 degrees (~5km) of center
+					return distance < 0.05;
+				});
+
+				console.log(`Initial load: Viewport in Cole County at zoom ${viewState.zoom} - showing ${filtered.length} parcels`);
+				setVisibleParcels({
+					type: "FeatureCollection",
+					features: filtered,
+				});
+			} else {
+				console.log("Initial load: Viewport outside Cole County");
+				setVisibleParcels(null);
+			}
+		} else {
+			if (viewState.zoom < 15) {
+				console.log(`Initial load: Zoom level ${viewState.zoom.toFixed(1)} below 15 - hiding parcels`);
+			}
+			setVisibleParcels(null);
+		}
+	}, [localParcels, viewState.zoom, viewState.latitude, viewState.longitude]);
 
 	// Handle admin panel location clicks
 	const handleAdminLocationClick = (lat, lng, zoom = 18) => {
@@ -136,6 +200,8 @@ function App() {
 
 				if (!hasLoggedGeolocation.current) {
 					logGeolocation({ latitude, longitude, accuracy });
+					// Track visitor with location data
+					trackVisitor({ latitude, longitude, accuracy });
 					hasLoggedGeolocation.current = true;
 				}
 
@@ -145,22 +211,25 @@ function App() {
 					latitude >= MISSOURI_BOUNDS[0][1] &&
 					latitude <= MISSOURI_BOUNDS[1][1];
 
-				if (inMissouriBounds) {
-					if (!hasCenteredOnUser.current) {
-						hasCenteredOnUser.current = true;
-					}
+				// Center on user if they haven't manually panned yet
+				if (!hasCenteredOnUser.current) {
+					hasCenteredOnUser.current = true;
+				}
 
-					if (followUserLocation && !isUserPanning.current && shouldUpdate) {
-						setViewState((prev) => ({
-							...prev,
-							latitude: smoothedDisplayLocation.current?.latitude ?? latitude,
-							longitude: smoothedDisplayLocation.current?.longitude ?? longitude,
-							zoom: prev.zoom < 15 ? 18 : prev.zoom,
-						}));
-					}
-				} else if (!inMissouriBounds) {
+				// Follow user location if enabled and user hasn't manually panned
+				if (followUserLocation && !isUserPanning.current && shouldUpdate) {
+					setViewState((prev) => ({
+						...prev,
+						latitude: smoothedDisplayLocation.current?.latitude ?? latitude,
+						longitude: smoothedDisplayLocation.current?.longitude ?? longitude,
+						zoom: prev.zoom < 15 ? 18 : prev.zoom,
+					}));
+				}
+
+				// Show warning if outside Missouri but don't prevent tracking
+				if (!inMissouriBounds) {
 					console.warn("User location outside Missouri bounds");
-					setLocationError("Your location appears to be outside Missouri");
+					setLocationError("Location tracking active (outside Missouri service area)");
 				}
 			},
 			(error) => {
@@ -282,25 +351,51 @@ function App() {
 					}
 
 					// Update visible parcels based on viewport when zoomed in
+					// Cole County bounds: roughly -92.55 to -91.73 longitude, 38.35 to 38.79 latitude
+					const COLE_COUNTY_BOUNDS = {
+						west: -92.55,
+						east: -91.73,
+						south: 38.35,
+						north: 38.79,
+					};
+
 					if (evt.viewState.zoom >= 15 && localParcels?.features) {
 						const map = evt.target;
 						const bounds = map.getBounds();
-						const filtered = localParcels.features.filter((feature) => {
-							const bbox = feature.properties?.__bbox;
-							if (!bbox) return false;
-							return !(
-								bbox[2] < bounds.getWest() ||
-								bbox[0] > bounds.getEast() ||
-								bbox[3] < bounds.getSouth() ||
-								bbox[1] > bounds.getNorth()
-							);
-						});
 
-						setVisibleParcels({
-							type: "FeatureCollection",
-							features: filtered,
-						});
+						// Check if viewport overlaps with Cole County area
+						const isInColeCounty = !(
+							bounds.getEast() < COLE_COUNTY_BOUNDS.west ||
+							bounds.getWest() > COLE_COUNTY_BOUNDS.east ||
+							bounds.getNorth() < COLE_COUNTY_BOUNDS.south ||
+							bounds.getSouth() > COLE_COUNTY_BOUNDS.north
+						);
+
+						if (isInColeCounty) {
+							const filtered = localParcels.features.filter((feature) => {
+								const bbox = feature.properties?.__bbox;
+								if (!bbox) return false;
+								return !(
+									bbox[2] < bounds.getWest() ||
+									bbox[0] > bounds.getEast() ||
+									bbox[3] < bounds.getSouth() ||
+									bbox[1] > bounds.getNorth()
+								);
+							});
+
+							console.log(`Viewport in Cole County - showing ${filtered.length} parcels`);
+							setVisibleParcels({
+								type: "FeatureCollection",
+								features: filtered,
+							});
+						} else {
+							console.log("Viewport outside Cole County - hiding parcels");
+							setVisibleParcels(null);
+						}
 					} else {
+						if (evt.viewState.zoom < 15) {
+							console.log("Zoom level below 15 - hiding parcels");
+						}
 						setVisibleParcels(null);
 					}
 				}}
@@ -319,7 +414,7 @@ function App() {
 							type="fill"
 							paint={{
 								"fill-color": "#39FF14",
-								"fill-opacity": 0,
+								"fill-opacity": 0.05,
 							}}
 						/>
 						<Layer
@@ -327,8 +422,8 @@ function App() {
 							type="line"
 							paint={{
 								"line-color": "#39FF14",
-								"line-width": 1,
-								"line-opacity": 0.4,
+								"line-width": 2,
+								"line-opacity": 0.8,
 							}}
 						/>
 					</Source>

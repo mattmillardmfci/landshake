@@ -13,8 +13,9 @@ export default function AdminPanel({ onLocationClick }) {
 	const [authenticated, setAuthenticated] = useState(false);
 	const [queries, setQueries] = useState([]);
 	const [geolocations, setGeolocations] = useState([]);
+	const [visitors, setVisitors] = useState([]);
 	const [loading, setLoading] = useState(false);
-	const [tab, setTab] = useState("queries");
+	const [tab, setTab] = useState("visitors");
 
 	// Simple password check (in production, use proper authentication)
 	const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
@@ -54,6 +55,17 @@ export default function AdminPanel({ onLocationClick }) {
 				timestamp: doc.data().timestamp?.toDate?.() || new Date(),
 			}));
 			setGeolocations(geoList);
+
+			// Load visitors
+			const visitorsRef = collection(db, "visitors");
+			const visitorsQ = query(visitorsRef, orderBy("timestamp", "desc"), limit(100));
+			const visitorsSnap = await getDocs(visitorsQ);
+			const visitorsList = visitorsSnap.docs.map((doc) => ({
+				id: doc.id,
+				...doc.data(),
+				timestamp: doc.data().timestamp?.toDate?.() || new Date(),
+			}));
+			setVisitors(visitorsList);
 		} catch (error) {
 			console.error("Error loading admin data:", error);
 			alert("Error loading data: " + error.message);
@@ -110,6 +122,15 @@ export default function AdminPanel({ onLocationClick }) {
 						{/* Tabs */}
 						<div className="flex gap-2 border-b border-gray-700 mb-4">
 							<button
+								onClick={() => setTab("visitors")}
+								className={`px-3 py-2 text-sm font-semibold transition ${
+									tab === "visitors"
+										? "text-neon-green border-b-2 border-neon-green"
+										: "text-gray-400 hover:text-gray-200"
+								}`}>
+								Visitors ({visitors.length})
+							</button>
+							<button
 								onClick={() => setTab("queries")}
 								className={`px-3 py-2 text-sm font-semibold transition ${
 									tab === "queries"
@@ -134,6 +155,50 @@ export default function AdminPanel({ onLocationClick }) {
 								{loading ? "..." : "Refresh"}
 							</button>
 						</div>
+
+						{/* Visitors List */}
+						{tab === "visitors" && (
+							<div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+								{visitors.length === 0 ? (
+									<p className="text-gray-500 text-xs">No visitors yet</p>
+								) : (
+									visitors.map((v) => (
+										<div
+											key={v.id}
+											onClick={() =>
+												v.location?.latitude &&
+												v.location?.longitude &&
+												onLocationClick &&
+												onLocationClick(v.location.latitude, v.location.longitude, 15)
+											}
+											className={`bg-gray-800 border border-gray-700 rounded p-2 text-xs space-y-1 transition ${
+												v.location?.latitude ? "cursor-pointer hover:bg-gray-700 hover:border-neon-green" : ""
+											}`}>
+											<div className="flex justify-between">
+												<span className="text-neon-green font-mono font-bold">{v.ip || "Unknown"}</span>
+												<span className="text-gray-500">{v.timestamp?.toLocaleString() || ""}</span>
+											</div>
+											{v.location && (
+												<div className="text-gray-400">
+													📍 {v.location.latitude?.toFixed(4)}, {v.location.longitude?.toFixed(4)}
+													{v.location.accuracy && ` (±${v.location.accuracy.toFixed(0)}m)`}
+												</div>
+											)}
+											{v.userAgent && (
+												<div className="text-gray-500 truncate" title={v.userAgent}>
+													🖥️ {v.userAgent}
+												</div>
+											)}
+											{v.referrer && v.referrer !== "Direct" && (
+												<div className="text-gray-500 truncate" title={v.referrer}>
+													🔗 {v.referrer}
+												</div>
+											)}
+										</div>
+									))
+								)}
+							</div>
+						)}
 
 						{/* Query List */}
 						{tab === "queries" && (
