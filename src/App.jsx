@@ -51,6 +51,12 @@ function App() {
 		return () => clearTimeout(timer);
 	}, []);
 
+	// Log loading state changes
+	useEffect(() => {
+		console.log("📦 Parcel loading state:", loadingParcels ? "LOADING..." : "READY");
+		console.log("📊 Local parcels available:", localParcels ? `${localParcels.features?.length} features` : "NOT LOADED");
+	}, [loadingParcels, localParcels]);
+
 	// Track visitor on initial load
 	useEffect(() => {
 		if (!hasTrackedVisitor.current) {
@@ -59,8 +65,13 @@ function App() {
 		}
 	}, []);
 
-	// Update visible parcels when localParcels loads or viewState changes
+	// Trigger initial parcel display when parcels load and we're in Cole County
 	useEffect(() => {
+		if (!localParcels?.features) return;
+
+		console.log("🗺️ Parcels loaded, checking if we should display them at current location...");
+		console.log("Current position:", { lat: viewState.latitude, lng: viewState.longitude, zoom: viewState.zoom });
+
 		const COLE_COUNTY_BOUNDS = {
 			west: -92.55,
 			east: -91.73,
@@ -68,50 +79,33 @@ function App() {
 			north: 38.79,
 		};
 
-		if (viewState.zoom >= 15 && localParcels?.features) {
-			// Simple bounds check using viewState center
-			const centerLng = viewState.longitude;
-			const centerLat = viewState.latitude;
+		const isInColeCounty =
+			viewState.longitude >= COLE_COUNTY_BOUNDS.west &&
+			viewState.longitude <= COLE_COUNTY_BOUNDS.east &&
+			viewState.latitude >= COLE_COUNTY_BOUNDS.south &&
+			viewState.latitude <= COLE_COUNTY_BOUNDS.north;
 
-			const isInColeCounty =
-				centerLng >= COLE_COUNTY_BOUNDS.west &&
-				centerLng <= COLE_COUNTY_BOUNDS.east &&
-				centerLat >= COLE_COUNTY_BOUNDS.south &&
-				centerLat <= COLE_COUNTY_BOUNDS.north;
+		console.log("Is in Cole County:", isInColeCounty);
 
-			if (isInColeCounty) {
-				// Filter parcels near the viewport center
-				const filtered = localParcels.features.filter((feature) => {
-					const bbox = feature.properties?.__bbox;
-					if (!bbox) return false;
+		if (isInColeCounty && viewState.zoom >= 15) {
+			// Manually trigger a parcel update by filtering
+			const filtered = localParcels.features.filter((feature) => {
+				const bbox = feature.properties?.__bbox;
+				if (!bbox) return false;
 
-					// Check if parcel bbox is near the viewport center (rough check)
-					const parcelCenterLng = (bbox[0] + bbox[2]) / 2;
-					const parcelCenterLat = (bbox[1] + bbox[3]) / 2;
-					const distance = Math.sqrt(
-						Math.pow(parcelCenterLng - centerLng, 2) + Math.pow(parcelCenterLat - centerLat, 2),
-					);
+				// Show all parcels in Cole County initially
+				return true;
+			});
 
-					// Show parcels within ~0.05 degrees (~5km) of center
-					return distance < 0.05;
-				});
-
-				console.log(`Initial load: Viewport in Cole County at zoom ${viewState.zoom} - showing ${filtered.length} parcels`);
-				setVisibleParcels({
-					type: "FeatureCollection",
-					features: filtered,
-				});
-			} else {
-				console.log("Initial load: Viewport outside Cole County");
-				setVisibleParcels(null);
-			}
+			console.log(`🎯 Initial display: Showing ${filtered.length} parcels in Cole County`);
+			setVisibleParcels({
+				type: "FeatureCollection",
+				features: filtered,
+			});
 		} else {
-			if (viewState.zoom < 15) {
-				console.log(`Initial load: Zoom level ${viewState.zoom.toFixed(1)} below 15 - hiding parcels`);
-			}
-			setVisibleParcels(null);
+			console.log("Not displaying parcels:", { isInColeCounty, zoom: viewState.zoom });
 		}
-	}, [localParcels, viewState.zoom, viewState.latitude, viewState.longitude]);
+	}, [localParcels]);
 
 	// Handle admin panel location clicks
 	const handleAdminLocationClick = (lat, lng, zoom = 18) => {
@@ -383,18 +377,20 @@ function App() {
 								);
 							});
 
-							console.log(`Viewport in Cole County - showing ${filtered.length} parcels`);
+							console.log(`🗺️ onMove: Viewport in Cole County at zoom ${evt.viewState.zoom.toFixed(1)} - showing ${filtered.length} parcels`);
 							setVisibleParcels({
 								type: "FeatureCollection",
 								features: filtered,
 							});
 						} else {
-							console.log("Viewport outside Cole County - hiding parcels");
+							console.log("🗺️ onMove: Viewport outside Cole County - hiding parcels");
 							setVisibleParcels(null);
 						}
 					} else {
-						if (evt.viewState.zoom < 15) {
-							console.log("Zoom level below 15 - hiding parcels");
+						if (evt.viewState.zoom < 15 && localParcels?.features) {
+							console.log(`🗺️ onMove: Zoom ${evt.viewState.zoom.toFixed(1)} < 15 - hiding parcels`);
+						} else if (!localParcels?.features) {
+							console.log("🗺️ onMove: Parcels not loaded yet");
 						}
 						setVisibleParcels(null);
 					}
