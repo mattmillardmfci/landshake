@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Map, { Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import useMissouriParcels from "./hooks/useMissouriParcels";
@@ -27,10 +27,15 @@ function App() {
 	const [selectedParcel, setSelectedParcel] = useState(null);
 	const [userLocation, setUserLocation] = useState(null);
 	const [locationError, setLocationError] = useState(null);
+	const [locationPulse, setLocationPulse] = useState(0);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchLoading, setSearchLoading] = useState(false);
 	const [showSplash, setShowSplash] = useState(true);
 	const [fakeParcels, setFakeParcels] = useState(null);
+	const [followUserLocation, setFollowUserLocation] = useState(true);
+	const hasCenteredOnUser = useRef(false);
+	const hasLoggedGeolocation = useRef(false);
+	const isUserPanning = useRef(false);
 
 	const { parcels, selectedParcelData, handleMapClick, loadParcelsForBounds, isLoading, loadingParcels } =
 		useMissouriParcels();
@@ -142,49 +147,92 @@ function App() {
 
 	// Get user's current location on component mount
 	useEffect(() => {
-		if (navigator.geolocation) {
-			console.log("Requesting user geolocation...");
-			navigator.geolocation.getCurrentPosition(
-				(position) => {
-					const { latitude, longitude, accuracy } = position.coords;
-					console.log("User location received:", { latitude, longitude });
+		if (!navigator.geolocation) {
+			setLocationError("Geolocation is not supported by this browser.");
+			return;
+		}
 
-					// Log geolocation to Firebase
+		console.log("Starting user geolocation watch...");
+		const watchId = navigator.geolocation.watchPosition(
+			(position) => {
+				const { latitude, longitude, accuracy } = position.coords;
+				console.log("User location updated:", { latitude, longitude, accuracy });
+
+				setUserLocation({ latitude, longitude, accuracy });
+				setLocationError(null);
+
+				if (!hasLoggedGeolocation.current) {
 					logGeolocation({ latitude, longitude, accuracy });
+					hasLoggedGeolocation.current = true;
+				}
 
-					// Check if location is in Missouri bounds
-					const inMissouriBounds =
-						longitude >= MISSOURI_BOUNDS[0][0] &&
-						longitude <= MISSOURI_BOUNDS[1][0] &&
-						latitude >= MISSOURI_BOUNDS[0][1] &&
-						latitude <= MISSOURI_BOUNDS[1][1];
+				const inMissouriBounds =
+					longitude >= MISSOURI_BOUNDS[0][0] &&
+					longitude <= MISSOURI_BOUNDS[1][0] &&
+					latitude >= MISSOURI_BOUNDS[0][1] &&
+					latitude <= MISSOURI_BOUNDS[1][1];
 
-					if (inMissouriBounds) {
-						// Zoom to user location - max zoom (100%)
-						const newViewState = {
-							latitude,
-							longitude,
-							zoom: 18,
-						};
-						setViewState(newViewState);
-						setUserLocation({ latitude, longitude });
-						console.log("Zoomed to user location:", newViewState);
-
-						// Generate fake parcels around user's location
+				if (inMissouriBounds) {
+					if (!hasCenteredOnUser.current) {
 						const newParcels = generateFakeParcels(latitude, longitude, 100);
 						setFakeParcels(newParcels);
-					} else {
-						console.warn("User location outside Missouri bounds");
-						setLocationError("Your location appears to be outside Missouri");
+						hasCenteredOnUser.current = true;
 					}
-				},
-				(error) => {
-					console.warn("Geolocation error:", error);
-					setLocationError("Unable to access your location. Using default map view.");
-				},
-			);
-		}
+
+					if (followUserLocation && !isUserPanning.current) {
+						setViewState((prev) => ({
+							...prev,
+							latitude,
+							longitude,
+							zoom: prev.zoom < 15 ? 18 : prev.zoom,
+						}));
+					}
+				} else if (!inMissouriBounds) {
+					console.warn("User location outside Missouri bounds");
+					setLocationError("Your location appears to be outside Missouri");
+				}
+			},
+			(error) => {
+				console.warn("Geolocation error:", error);
+				setLocationError("Unable to access your location. Using default map view.");
+			},
+			{
+				enableHighAccuracy: true,
+				maximumAge: 0,
+				timeout: 10000,
+			},
+		);
+
+		return () => {
+			navigator.geolocation.clearWatch(watchId);
+		};
 	}, []);
+
+	useEffect(() => {
+		const intervalId = setInterval(() => {
+			setLocationPulse((prev) => (prev + 0.03) % 1);
+		}, 60);
+
+		return () => clearInterval(intervalId);
+	}, []);
+
+	const userLocationGeoJSON = userLocation
+		? {
+				type: "FeatureCollection",
+				features: [
+					{
+						type: "Feature",
+						geometry: {
+							type: "Point",
+							coordinates: [userLocation.longitude, userLocation.latitude],
+						},
+						properties: {
+							accuracy: userLocation.accuracy ?? null,
+						},
+					},
+				],
+			}
+		: null;
 
 	const onMapClick = async (event) => {
 		console.log("App: Map clicked at:", event.lngLat);
@@ -280,7 +328,13 @@ function App() {
 		<div className="relative w-full h-screen">
 			<Map
 				{...viewState}
-				onMove={(evt) => setViewState(evt.viewState)}
+				onMove={(evt) => {
+					setViewState(evt.viewState);
+					if (evt.originalEvent) {
+						isUserPanning.current = true;
+						setFollowUserLocation(false);
+					}
+				}}
 				onClick={onMapClick}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
@@ -306,6 +360,33 @@ function App() {
 								"line-color": "#39FF14",
 								"line-width": 2,
 								"line-opacity": 0.6,
+							}}
+						/>
+					</Source>
+				)}
+
+				{/* User Location */}
+				{userLocationGeoJSON && (
+					<Source id="user-location" type="geojson" data={userLocationGeoJSON}>
+						<Layer
+							id="user-location-pulse"
+							type="circle"
+							paint={{
+								"circle-radius": 12 + locationPulse * 20,
+								"circle-color": "#3B82F6",
+								"circle-opacity": 0.35 * (1 - locationPulse),
+								"circle-blur": 0.6,
+							}}
+						/>
+						<Layer
+							id="user-location-dot"
+							type="circle"
+							paint={{
+								"circle-radius": 6,
+								"circle-color": "#3B82F6",
+								"circle-stroke-color": "#FFFFFF",
+								"circle-stroke-width": 2,
+								"circle-opacity": 1,
 							}}
 						/>
 					</Source>
@@ -349,16 +430,32 @@ function App() {
 			{showSplash && (
 				<div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center px-6">
 					<div className="text-center space-y-8 animate-fade-in flex flex-col items-center justify-center max-w-4xl">
-						<img src="/logo.png" alt="Landshake Logo" className="w-4/5 md:w-96 h-auto mx-auto object-contain drop-shadow-2xl" />
+						<img
+							src="/logo.png"
+							alt="Landshake Logo"
+							className="w-4/5 md:w-96 h-auto mx-auto object-contain drop-shadow-2xl"
+						/>
 						<div className="space-y-3">
-							<h1 className="text-neon-green text-5xl md:text-7xl font-black tracking-tight" style={{ fontFamily: "Impact, Futura, sans-serif", textShadow: "0 0 30px rgba(57, 255, 20, 0.6), 0 0 60px rgba(57, 255, 20, 0.3)" }}>
+							<h1
+								className="text-neon-green text-5xl md:text-7xl font-black tracking-tight"
+								style={{
+									fontFamily: "Impact, Futura, sans-serif",
+									textShadow: "0 0 30px rgba(57, 255, 20, 0.6), 0 0 60px rgba(57, 255, 20, 0.3)",
+								}}>
 								WHERE PROPERTY LINES
 							</h1>
-							<h1 className="text-neon-green text-5xl md:text-7xl font-black tracking-tight" style={{ fontFamily: "Impact, Futura, sans-serif", textShadow: "0 0 30px rgba(57, 255, 20, 0.6), 0 0 60px rgba(57, 255, 20, 0.3)" }}>
+							<h1
+								className="text-neon-green text-5xl md:text-7xl font-black tracking-tight"
+								style={{
+									fontFamily: "Impact, Futura, sans-serif",
+									textShadow: "0 0 30px rgba(57, 255, 20, 0.6), 0 0 60px rgba(57, 255, 20, 0.3)",
+								}}>
 								BECOME PERMISSION GRANTED
 							</h1>
 						</div>
-						<p className="text-gray-400 text-sm md:text-base tracking-widest uppercase font-light mt-6 letter-spacing">The landowner verification platform</p>
+						<p className="text-gray-400 text-sm md:text-base tracking-widest uppercase font-light mt-6 letter-spacing">
+							The landowner verification platform
+						</p>
 					</div>
 				</div>
 			)}
@@ -421,6 +518,33 @@ function App() {
 						<p className="text-white text-sm">Loading parcels...</p>
 					</div>
 				</div>
+			)}
+
+			{/* Re-center Location Button */}
+			{userLocation && !followUserLocation && (
+				<button
+					onClick={() => {
+						isUserPanning.current = false;
+						setFollowUserLocation(true);
+						setViewState((prev) => ({
+							...prev,
+							latitude: userLocation.latitude,
+							longitude: userLocation.longitude,
+							zoom: prev.zoom < 15 ? 18 : prev.zoom,
+						}));
+					}}
+					className="absolute bottom-6 right-6 z-20 bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow-lg transition-all hover:scale-110"
+					title="Follow my location">
+					<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+						/>
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+					</svg>
+				</button>
 			)}
 
 			{/* Contact Card Modal */}

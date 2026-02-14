@@ -7,6 +7,7 @@
 		"dev": "vite",
 		"dev:full": "concurrently \"npm run dev:api\" \"npm run dev\"",
 		"dev:api": "node server.js",
+		"parcels:convert": "node scripts/convert-cole-parcels.mjs",
 		"build": "vite build",
 		"preview": "vite preview"
 	},
@@ -17,9 +18,11 @@
 		"firebase": "^12.9.0",
 		"mapbox-gl": "^3.1.2",
 		"node-fetch": "^2.7.0",
+		"proj4": "^2.20.2",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
-		"react-map-gl": "^7.1.7"
+		"react-map-gl": "^7.1.7",
+		"shpjs": "^6.2.0"
 	},
 	"devDependencies": {
 		"@types/react": "^18.3.3",
