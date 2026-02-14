@@ -378,46 +378,46 @@ function App() {
 			console.log("Zoomed to address:", result);
 
 			// Query the parcel at this location
-			const fakeEvent = {
-				lngLat: {
-					lng: result.longitude,
-					lat: result.latitude,
-				},
-			};
-			const parcel = await handleMapClick(fakeEvent);
-			setSelectedParcel(parcel);
+			onMove={(evt) => {
+				setViewState(evt.viewState);
+				if (evt.originalEvent) {
+					isUserPanning.current = true;
+					setFollowUserLocation(false);
+				}
 
-			// Log address search to Firebase
-			await logQuery({
-				lat: result.latitude,
-				lng: result.longitude,
-				address: result.address,
-				result: parcel
-					? {
-							owner: parcel.properties.OWNER,
-							acres: parcel.properties.ACRES_CALC,
-							parcelId: parcel.properties.PARCEL_ID,
-						}
-					: null,
-				source: "address_search",
-			});
-		} catch (error) {
-			console.error("Error searching address:", error);
-			alert("Error searching address. Please try again.");
-		} finally {
-			setSearchLoading(false);
-		}
-	};
+				// Use tile-based system if available and zoomed in enough (zoom 13-20)
+				if (tilesManifest && evt.viewState.zoom >= MIN_PARCEL_ZOOM && evt.viewState.zoom <= MAX_PARCEL_ZOOM) {
+					const map = evt.target;
+					const bounds = map.getBounds();
+					const viewportBounds = {
+						minLng: bounds.getWest(),
+						maxLng: bounds.getEast(),
+						minLat: bounds.getSouth(),
+						maxLat: bounds.getNorth(),
+					};
 
-	return (
-		<div className="relative w-full h-screen">
-			<Map
-				{...viewState}
-				onMove={(evt) => {
-					setViewState(evt.viewState);
-					if (evt.originalEvent) {
-						isUserPanning.current = true;
-						setFollowUserLocation(false);
+					// Update which tiles should be loaded for current viewport
+					updateVisibleTiles(viewportBounds);
+
+					// Get combined GeoJSON of all visible tiles with viewport culling
+					const parcels = getVisibleParcels(viewportBounds);
+					if (parcels && parcels.features && parcels.features.length > 0) {
+						console.log(`\ud83c\udfaf Tile-based display: ${parcels.features.length} parcels visible at zoom ${evt.viewState.zoom.toFixed(1)}`);
+						setVisibleParcels(parcels);
+					} else {
+						console.log("\u26a0\ufe0f No tiles contain data for current viewport");
+						setVisibleParcels(null);
+					}
+				} else {
+					// Outside zoom range or no tiles available - hide parcels
+					if (evt.viewState.zoom < MIN_PARCEL_ZOOM || evt.viewState.zoom > MAX_PARCEL_ZOOM) {
+						console.log(`\u25c0 Zoom ${evt.viewState.zoom.toFixed(1)} outside parcel range - parcels hidden`);
+					} else if (!tilesManifest) {
+						console.log("\ud83d\udce6 Tile manifest not ready yet");
+					}
+					setVisibleParcels(null);
+				}
+			}}
 					}
 
 					// Use tile-based system if available and zoomed in enough (zoom 14+)
@@ -721,13 +721,18 @@ function App() {
 				viewState={viewState}
 				selectedParcel={selectedParcel}
 				userLocation={userLocation}
-				isLoading={isLoading}
-				localParcels={localParcels}
-				visibleParcels={visibleParcels}
-				loadingParcels={loadingParcels}
-			/>
-		</div>
-	);
-}
-
-export default App;
+					? {
+							type: "FeatureCollection",
+							features: [
+								{
+									type: "Feature",
+									geometry: {
+										type: "Point",
+										coordinates: [userLocation.longitude, userLocation.latitude],
+									},
+									properties: {
+										accuracy: userLocation.accuracy ?? null,
+									},
+								},
+							],
+					}
