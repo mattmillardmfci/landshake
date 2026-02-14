@@ -43,7 +43,10 @@ function featureInBbox(feature, bbox) {
 	// Get bounds from geometry coordinates
 	if (!feature.geometry || !feature.geometry.coordinates) return false;
 
-	let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+	let minLng = Infinity,
+		maxLng = -Infinity,
+		minLat = Infinity,
+		maxLat = -Infinity;
 
 	const coords = feature.geometry.coordinates[0];
 	if (!coords || !Array.isArray(coords)) return false;
@@ -56,12 +59,7 @@ function featureInBbox(feature, bbox) {
 	}
 
 	// Check if feature bbox intersects with tile bbox
-	return !(
-		maxLng < bbox.minLng ||
-		minLng > bbox.maxLng ||
-		maxLat < bbox.minLat ||
-		minLat > bbox.maxLat
-	);
+	return !(maxLng < bbox.minLng || minLng > bbox.maxLng || maxLat < bbox.minLat || minLat > bbox.maxLat);
 }
 
 async function splitParcels() {

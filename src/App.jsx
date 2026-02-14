@@ -206,10 +206,10 @@ function App() {
 				}
 
 				const inParcelBounds =
-					longitude >= -110.3 &&
-					longitude <= -110.0 &&
-					latitude >= 34.4 &&
-					latitude <= 34.7;
+					longitude >= -92.496 &&
+					longitude <= -92.001 &&
+					latitude >= 38.324 &&
+					latitude <= 38.737;
 
 				// Show warning if outside parcel area
 				if (!inParcelBounds) {
@@ -570,6 +570,27 @@ function App() {
 				</div>
 			)}
 
+			{/* Request Location Button */}
+			{!userLocation && !followUserLocation && (
+				<button
+					onClick={() => {
+						isUserPanning.current = false;
+						setFollowUserLocation(true);
+					}}
+					className="absolute bottom-6 right-6 z-20 bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow-lg transition-all hover:scale-110"
+					title="Go to my location">
+					<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+						/>
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+					</svg>
+				</button>
+			)}
+
 			{/* Re-center Location Button */}
 			{userLocation && !followUserLocation && (
 				<button
@@ -607,20 +628,6 @@ function App() {
 				/>
 			)}
 
-			{/* Mobile Debug Display */}
-			<div className="absolute top-4 left-4 z-50 bg-black bg-opacity-90 text-white text-xs p-3 rounded-lg max-w-xs font-mono">
-				<div className="font-bold mb-2">DEBUG INFO</div>
-				<div>Loading: {loadingParcels ? "🔄" : "✅"}</div>
-				<div>Local: {localParcels?.features?.length ?? 0} features</div>
-				<div>Visible: {visibleParcels?.features?.length ?? 0} features</div>
-				<div>Render: {visibleParcels?.features?.length > 0 ? "🎨 YES" : "❌ NO"}</div>
-				<div className="mt-2 border-t border-gray-500 pt-2">
-					<div>Zoom: {viewState.zoom.toFixed(1)}</div>
-					<div>Lat: {viewState.latitude.toFixed(2)}</div>
-					<div>Lon: {viewState.longitude.toFixed(2)}</div>
-				</div>
-			</div>
-
 			{/* Admin Panel */}
 			<AdminPanel onLocationClick={handleAdminLocationClick} />
 
@@ -630,6 +637,9 @@ function App() {
 				selectedParcel={selectedParcel}
 				userLocation={userLocation}
 				isLoading={isLoading}
+				localParcels={localParcels}
+				visibleParcels={visibleParcels}
+				loadingParcels={loadingParcels}
 			/>
 		</div>
 	);

@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { getErrors, clearErrors } from "../services/errorTracker";
 
-export default function DebugPanel({ viewState, selectedParcel, userLocation, isLoading }) {
+export default function DebugPanel({ viewState, selectedParcel, userLocation, isLoading, localParcels, visibleParcels, loadingParcels }) {
 	const [fps, setFps] = useState(60);
 	const [frameCount, setFrameCount] = useState(0);
 	const [lastTime, setLastTime] = useState(Date.now());
@@ -96,17 +96,19 @@ export default function DebugPanel({ viewState, selectedParcel, userLocation, is
 						</div>
 					</div>
 
-					{/* Loading State */}
+					{/* Parcel Loading State */}
 					<div className="text-gray-300 mb-2 border-t border-gray-600 pt-2">
-						<div>
-							Loading: <span className={isLoading ? "text-red-400" : "text-green-400"}>{isLoading ? "YES" : "NO"}</span>
-						</div>
+						<div className="text-gray-400">Parcel Data:</div>
+						<div>Loading: {loadingParcels ? "🔄" : "✅"}</div>
+						<div>Local: {localParcels?.features?.length ?? 0} features</div>
+						<div>Visible: {visibleParcels?.features?.length ?? 0} features</div>
+						<div>Render: {visibleParcels?.features?.length > 0 ? "🎨 YES" : "❌ NO"}</div>
 					</div>
 
 					{/* Selected Parcel */}
 					<div className="text-gray-300 mb-2 border-t border-gray-600 pt-2">
-						<div>Selected Parcel:</div>
-						<div className={selectedParcel ? "text-green-400" : "text-gray-500"}>{selectedParcel ? "YES" : "NONE"}</div>
+						<div>Map Interaction:</div>
+						<div>Selected: <span className={selectedParcel ? "text-green-400" : "text-gray-500"}>{selectedParcel ? "YES" : "NONE"}</span></div>
 					</div>
 
 					{/* User Location */}

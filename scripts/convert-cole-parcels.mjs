@@ -74,4 +74,3 @@ const converted = {
 
 fs.writeFileSync(outputPath, JSON.stringify(converted));
 console.log(`✅ Wrote ${converted.features.length} features to:`, outputPath);
-
