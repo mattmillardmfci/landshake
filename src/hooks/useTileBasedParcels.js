@@ -178,8 +178,7 @@ const useTileBasedParcels = () => {
 					const geometry = feature.geometry;
 					if (!geometry || !geometry.coordinates) return false;
 
-					const coords =
-						geometry.type === "MultiPolygon" ? geometry.coordinates.flat(2) : geometry.coordinates.flat(1);
+					const coords = geometry.type === "MultiPolygon" ? geometry.coordinates.flat(2) : geometry.coordinates.flat(1);
 
 					return coords.some((coord) => {
 						const [lng, lat] = coord;

@@ -143,10 +143,13 @@ function App() {
 		console.log("loadingParcels:", loadingParcels);
 		console.log("localParcels:", localParcels ? `${localParcels.features?.length} features` : "null");
 		console.log("visibleParcels:", visibleParcels ? `${visibleParcels.features?.length} features` : "null");
-		
+
 		const renderCondition = visibleParcels && visibleParcels.features && visibleParcels.features.length > 0;
-		console.log("✔️ RENDER CONDITION (visibleParcels && visibleParcels.features && visibleParcels.features.length > 0):", renderCondition);
-		
+		console.log(
+			"✔️ RENDER CONDITION (visibleParcels && visibleParcels.features && visibleParcels.features.length > 0):",
+			renderCondition,
+		);
+
 		if (renderCondition) {
 			console.log("🎨 WILL RENDER: Visible parcels layer is visible");
 		} else {
@@ -206,9 +209,7 @@ function App() {
 		const Δφ = ((lat2 - lat1) * Math.PI) / 180;
 		const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-		const a =
-			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
 		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
 		return R * c;
@@ -246,17 +247,13 @@ function App() {
 
 				if (shouldUpdate || !lastRawLocation.current) {
 					lastRawLocation.current = { latitude, longitude, accuracy };
-					
+
 					// Smooth the display position with interpolation
 					if (smoothedDisplayLocation.current) {
 						const smoothFactor = 0.3; // Lower = smoother but slower
 						smoothedDisplayLocation.current = {
-							latitude:
-								smoothedDisplayLocation.current.latitude * (1 - smoothFactor) +
-								latitude * smoothFactor,
-							longitude:
-								smoothedDisplayLocation.current.longitude * (1 - smoothFactor) +
-								longitude * smoothFactor,
+							latitude: smoothedDisplayLocation.current.latitude * (1 - smoothFactor) + latitude * smoothFactor,
+							longitude: smoothedDisplayLocation.current.longitude * (1 - smoothFactor) + longitude * smoothFactor,
 							accuracy,
 						};
 					} else {
@@ -297,11 +294,7 @@ function App() {
 					hasLoggedGeolocation.current = true;
 				}
 
-				const inParcelBounds =
-					longitude >= -92.496 &&
-					longitude <= -92.001 &&
-					latitude >= 38.324 &&
-					latitude <= 38.737;
+				const inParcelBounds = longitude >= -92.496 && longitude <= -92.001 && latitude >= 38.324 && latitude <= 38.737;
 
 				// Show warning if outside parcel area
 				if (!inParcelBounds) {
@@ -367,7 +360,7 @@ function App() {
 						},
 					},
 				],
-		}
+			}
 		: null;
 
 	// Handle address search
@@ -407,69 +400,77 @@ function App() {
 	}, [drawMode]);
 
 	// Handle map click for draw mode
-	const handleDrawClick = useCallback((event) => {
-		if (!drawMode) return;
+	const handleDrawClick = useCallback(
+		(event) => {
+			if (!drawMode) return;
 
-		const { lngLat } = event;
-		const newPoint = [lngLat.lng, lngLat.lat];
+			const { lngLat } = event;
+			const newPoint = [lngLat.lng, lngLat.lat];
 
-		setDrawnPoints((prev) => [...prev, newPoint]);
+			setDrawnPoints((prev) => [...prev, newPoint]);
 
-		if (drawnPoints.length > 0) {
-			const lastPoint = drawnPoints[drawnPoints.length - 1];
-			const newLine = {
-				type: "Feature",
-				geometry: {
-					type: "LineString",
-					coordinates: [lastPoint, newPoint],
-				},
-				properties: {},
-			};
-			setDrawnLines((prev) => [...prev, newLine]);
-		}
-	}, [drawMode, drawnPoints]);
+			if (drawnPoints.length > 0) {
+				const lastPoint = drawnPoints[drawnPoints.length - 1];
+				const newLine = {
+					type: "Feature",
+					geometry: {
+						type: "LineString",
+						coordinates: [lastPoint, newPoint],
+					},
+					properties: {},
+				};
+				setDrawnLines((prev) => [...prev, newLine]);
+			}
+		},
+		[drawMode, drawnPoints],
+	);
 
 	// Map onMove handler for zoom-gated parcel loading
-	const handleMapMove = useCallback((evt) => {
-		setViewState(evt.viewState);
-		if (evt.originalEvent) {
-			isUserPanning.current = true;
-			setFollowUserLocation(false);
-		}
+	const handleMapMove = useCallback(
+		(evt) => {
+			setViewState(evt.viewState);
+			if (evt.originalEvent) {
+				isUserPanning.current = true;
+				setFollowUserLocation(false);
+			}
 
-		// Use tile-based system if available and zoomed in enough (zoom 13-20)
-		if (tilesManifest && evt.viewState.zoom >= MIN_PARCEL_ZOOM && evt.viewState.zoom <= MAX_PARCEL_ZOOM) {
-			const map = evt.target;
-			const bounds = map.getBounds();
-			const viewportBounds = {
-				minLng: bounds.getWest(),
-				maxLng: bounds.getEast(),
-				minLat: bounds.getSouth(),
-				maxLat: bounds.getNorth(),
-			};
+			// Use tile-based system if available and zoomed in enough (zoom 13-20)
+			if (tilesManifest && evt.viewState.zoom >= MIN_PARCEL_ZOOM && evt.viewState.zoom <= MAX_PARCEL_ZOOM) {
+				const map = evt.target;
+				const bounds = map.getBounds();
+				const viewportBounds = {
+					minLng: bounds.getWest(),
+					maxLng: bounds.getEast(),
+					minLat: bounds.getSouth(),
+					maxLat: bounds.getNorth(),
+				};
 
-			// Update which tiles should be loaded for current viewport
-			updateVisibleTiles(viewportBounds);
+				// Update which tiles should be loaded for current viewport
+				updateVisibleTiles(viewportBounds);
 
-			// Get combined GeoJSON of all visible tiles with viewport culling
-			const parcels = getVisibleParcels(viewportBounds);
-			if (parcels && parcels.features && parcels.features.length > 0) {
-				console.log(`🎯 Tile-based display: ${parcels.features.length} parcels visible at zoom ${evt.viewState.zoom.toFixed(1)}`);
-				setVisibleParcels(parcels);
+				// Get combined GeoJSON of all visible tiles with viewport culling
+				const parcels = getVisibleParcels(viewportBounds);
+				if (parcels && parcels.features && parcels.features.length > 0) {
+					console.log(
+						`🎯 Tile-based display: ${parcels.features.length} parcels visible at zoom ${evt.viewState.zoom.toFixed(1)}`,
+					);
+					setVisibleParcels(parcels);
+				} else {
+					console.log("⚠️ No tiles contain data for current viewport");
+					setVisibleParcels(null);
+				}
 			} else {
-				console.log("⚠️ No tiles contain data for current viewport");
+				// Outside zoom range or no tiles available - hide parcels
+				if (evt.viewState.zoom < MIN_PARCEL_ZOOM || evt.viewState.zoom > MAX_PARCEL_ZOOM) {
+					console.log(`◀ Zoom ${evt.viewState.zoom.toFixed(1)} outside parcel range - parcels hidden`);
+				} else if (!tilesManifest) {
+					console.log("📦 Tile manifest not ready yet");
+				}
 				setVisibleParcels(null);
 			}
-		} else {
-			// Outside zoom range or no tiles available - hide parcels
-			if (evt.viewState.zoom < MIN_PARCEL_ZOOM || evt.viewState.zoom > MAX_PARCEL_ZOOM) {
-				console.log(`◀ Zoom ${evt.viewState.zoom.toFixed(1)} outside parcel range - parcels hidden`);
-			} else if (!tilesManifest) {
-				console.log("📦 Tile manifest not ready yet");
-			}
-			setVisibleParcels(null);
-		}
-	}, [tilesManifest, updateVisibleTiles, getVisibleParcels]);
+		},
+		[tilesManifest, updateVisibleTiles, getVisibleParcels],
+	);
 
 	return (
 		<div className="relative w-full h-screen overflow-hidden bg-black">
@@ -653,29 +654,29 @@ function App() {
 			)}
 
 			{/* Header */}
-		<div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-3 md:p-6 z-10 flex items-center gap-4">
-			<img src="/logo.png" alt="Landshake" className="w-auto" style={{ height: "60px" }} />
+			<div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-3 md:p-6 z-10 flex items-center gap-4">
+				<img src="/logo.png" alt="Landshake" className="w-auto" style={{ height: "60px" }} />
 
-			{/* Address Search */}
-			<form onSubmit={handleAddressSearch} className="flex-1 max-w-md">
-				<div className="flex gap-1 md:gap-2">
-					<input
-						type="text"
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Search address (e.g., 123 Main St)"
-						className="flex-1 px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded-lg bg-white/90 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-green"
-						disabled={searchLoading || isLoading}
-					/>
-					<button
-						type="submit"
-						disabled={searchLoading || isLoading || !searchQuery.trim()}
-						className="px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base bg-neon-green text-black font-semibold rounded-lg hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed transition">
-						{searchLoading ? "..." : "Search"}
-					</button>
-				</div>
-			</form>
-		</div>
+				{/* Address Search */}
+				<form onSubmit={handleAddressSearch} className="flex-1 max-w-md">
+					<div className="flex gap-1 md:gap-2">
+						<input
+							type="text"
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							placeholder="Search address (e.g., 123 Main St)"
+							className="flex-1 px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded-lg bg-white/90 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-green"
+							disabled={searchLoading || isLoading}
+						/>
+						<button
+							type="submit"
+							disabled={searchLoading || isLoading || !searchQuery.trim()}
+							className="px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base bg-neon-green text-black font-semibold rounded-lg hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed transition">
+							{searchLoading ? "..." : "Search"}
+						</button>
+					</div>
+				</form>
+			</div>
 
 			{/* Loading Indicator */}
 			{isLoading && (
@@ -759,69 +760,65 @@ function App() {
 			<AdminPanel onLocationClick={handleAdminLocationClick} />
 
 			{/* Debug Panel */}
-			<DebugPanel
-				viewState={viewState}
-				selectedParcel={selectedParcel}
-				userLocation={userLocation}
-			/>
+			<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />
 
-		{/* Bottom Navigation */}
-		<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 z-10 px-4 py-3">
-			<div className="flex gap-4 justify-center items-center">
-				{/* Debug Button */}
-				<button
-					onClick={() => setActiveNav(activeNav === "debug" ? null : "debug")}
-					className={`px-4 py-2 rounded-lg font-semibold transition ${
-						activeNav === "debug"
-							? "bg-neon-green text-black"
-							: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
-					}`}>
-					debug
-				</button>
+			{/* Bottom Navigation */}
+			<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 z-10 px-4 py-3">
+				<div className="flex gap-4 justify-center items-center">
+					{/* Debug Button */}
+					<button
+						onClick={() => setActiveNav(activeNav === "debug" ? null : "debug")}
+						className={`px-4 py-2 rounded-lg font-semibold transition ${
+							activeNav === "debug"
+								? "bg-neon-green text-black"
+								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
+						}`}>
+						debug
+					</button>
 
-				{/* Tools Button */}
-				<button
-					onClick={() => {
-						setShowToolsMenu(!showToolsMenu);
-						setActiveNav("tools");
-					}}
-					className={`px-4 py-2 rounded-lg font-semibold transition ${
-						activeNav === "tools"
-							? "bg-neon-green text-black"
-							: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
-					}`}>
-					tools {showToolsMenu && "▲"}
-				</button>
+					{/* Tools Button */}
+					<button
+						onClick={() => {
+							setShowToolsMenu(!showToolsMenu);
+							setActiveNav("tools");
+						}}
+						className={`px-4 py-2 rounded-lg font-semibold transition ${
+							activeNav === "tools"
+								? "bg-neon-green text-black"
+								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
+						}`}>
+						tools {showToolsMenu && "▲"}
+					</button>
 
-				{/* Admin Button */}
-				<button
-					onClick={() => setActiveNav(activeNav === "admin" ? null : "admin")}
-					className={`px-4 py-2 rounded-lg font-semibold transition ${
-						activeNav === "admin"
-							? "bg-neon-green text-black"
-							: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
-					}`}>
-					admin
-				</button>
-			</div>
-
-			{/* Tools Menu (Secondary Nav) */}
-			{showToolsMenu && (
-				<div className="mt-3 p-3 bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md">
-					<div className="flex gap-2 flex-wrap justify-center">
-						<button
-							onClick={handleDrawLineTool}
-							className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-								drawMode
-									? "bg-orange-500 text-black"
-									: "bg-black/50 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
-							}`}>
-							{drawMode ? "✓ Draw Line" : "Draw Line"}
-						</button>
-					</div>
+					{/* Admin Button */}
+					<button
+						onClick={() => setActiveNav(activeNav === "admin" ? null : "admin")}
+						className={`px-4 py-2 rounded-lg font-semibold transition ${
+							activeNav === "admin"
+								? "bg-neon-green text-black"
+								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
+						}`}>
+						admin
+					</button>
 				</div>
-			)}
-		</div>
+
+				{/* Tools Menu (Secondary Nav) */}
+				{showToolsMenu && (
+					<div className="mt-3 p-3 bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md">
+						<div className="flex gap-2 flex-wrap justify-center">
+							<button
+								onClick={handleDrawLineTool}
+								className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+									drawMode
+										? "bg-orange-500 text-black"
+										: "bg-black/50 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
+								}`}>
+								{drawMode ? "✓ Draw Line" : "Draw Line"}
+							</button>
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
