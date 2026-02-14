@@ -36,6 +36,8 @@ function App() {
 	const hasCenteredOnUser = useRef(false);
 	const hasLoggedGeolocation = useRef(false);
 	const isUserPanning = useRef(false);
+	const lastRawLocation = useRef(null);
+	const smoothedDisplayLocation = useRef(null);
 
 	const { parcels, selectedParcelData, handleMapClick, loadParcelsForBounds, isLoading, loadingParcels } =
 		useMissouriParcels();
@@ -145,6 +147,22 @@ function App() {
 		});
 	};
 
+	// Calculate distance between two coordinates in meters
+	const calculateDistance = (lat1, lon1, lat2, lon2) => {
+		const R = 6371e3; // Earth radius in meters
+		const φ1 = (lat1 * Math.PI) / 180;
+		const φ2 = (lat2 * Math.PI) / 180;
+		const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+		const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+		const a =
+			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return R * c;
+	};
+
 	// Get user's current location on component mount
 	useEffect(() => {
 		if (!navigator.geolocation) {
@@ -156,9 +174,52 @@ function App() {
 		const watchId = navigator.geolocation.watchPosition(
 			(position) => {
 				const { latitude, longitude, accuracy } = position.coords;
-				console.log("User location updated:", { latitude, longitude, accuracy });
 
-				setUserLocation({ latitude, longitude, accuracy });
+				// Calculate distance from last position
+				const distanceThreshold = accuracy > 20 ? accuracy : 10; // Use accuracy as threshold, min 10m
+				let shouldUpdate = true;
+
+				if (lastRawLocation.current) {
+					const distance = calculateDistance(
+						lastRawLocation.current.latitude,
+						lastRawLocation.current.longitude,
+						latitude,
+						longitude,
+					);
+
+					// Only update if moved beyond threshold
+					if (distance < distanceThreshold) {
+						shouldUpdate = false;
+					}
+				}
+
+				if (shouldUpdate || !lastRawLocation.current) {
+					lastRawLocation.current = { latitude, longitude, accuracy };
+					
+					// Smooth the display position with interpolation
+					if (smoothedDisplayLocation.current) {
+						const smoothFactor = 0.3; // Lower = smoother but slower
+						smoothedDisplayLocation.current = {
+							latitude:
+								smoothedDisplayLocation.current.latitude * (1 - smoothFactor) +
+								latitude * smoothFactor,
+							longitude:
+								smoothedDisplayLocation.current.longitude * (1 - smoothFactor) +
+								longitude * smoothFactor,
+							accuracy,
+						};
+					} else {
+						smoothedDisplayLocation.current = { latitude, longitude, accuracy };
+					}
+
+					setUserLocation(smoothedDisplayLocation.current);
+					console.log("User location updated:", {
+						latitude: smoothedDisplayLocation.current.latitude,
+						longitude: smoothedDisplayLocation.current.longitude,
+						accuracy,
+					});
+				}
+
 				setLocationError(null);
 
 				if (!hasLoggedGeolocation.current) {
@@ -174,16 +235,20 @@ function App() {
 
 				if (inMissouriBounds) {
 					if (!hasCenteredOnUser.current) {
-						const newParcels = generateFakeParcels(latitude, longitude, 100);
+						const newParcels = generateFakeParcels(
+							smoothedDisplayLocation.current?.latitude ?? latitude,
+							smoothedDisplayLocation.current?.longitude ?? longitude,
+							100,
+						);
 						setFakeParcels(newParcels);
 						hasCenteredOnUser.current = true;
 					}
 
-					if (followUserLocation && !isUserPanning.current) {
+					if (followUserLocation && !isUserPanning.current && shouldUpdate) {
 						setViewState((prev) => ({
 							...prev,
-							latitude,
-							longitude,
+							latitude: smoothedDisplayLocation.current?.latitude ?? latitude,
+							longitude: smoothedDisplayLocation.current?.longitude ?? longitude,
 							zoom: prev.zoom < 15 ? 18 : prev.zoom,
 						}));
 					}
@@ -368,6 +433,24 @@ function App() {
 				{/* User Location */}
 				{userLocationGeoJSON && (
 					<Source id="user-location" type="geojson" data={userLocationGeoJSON}>
+						{/* Accuracy circle */}
+						<Layer
+							id="user-location-accuracy"
+							type="circle"
+							paint={{
+								"circle-radius": {
+									stops: [
+										[0, 0],
+										[20, userLocation?.accuracy || 20],
+									],
+									base: 2,
+								},
+								"circle-color": "#3B82F6",
+								"circle-opacity": 0.1,
+								"circle-blur": 0.3,
+							}}
+						/>
+						{/* Pulse animation */}
 						<Layer
 							id="user-location-pulse"
 							type="circle"
@@ -378,6 +461,7 @@ function App() {
 								"circle-blur": 0.6,
 							}}
 						/>
+						{/* Dot */}
 						<Layer
 							id="user-location-dot"
 							type="circle"
