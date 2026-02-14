@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Map, { Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import useMissouriParcels from "./hooks/useMissouriParcels";
@@ -16,8 +16,13 @@ import "./services/errorTracker"; // Initialize error tracking
 const PARCEL_CENTER = {
 	latitude: 38.53,
 	longitude: -92.24,
-	zoom: 16,
+	zoom: 13.5,
 };
+
+const MIN_PARCEL_ZOOM = 13;
+const MAX_PARCEL_ZOOM = 20;
+const LOCATION_CACHE_KEY = "landverify:userLocation";
+const LOCATION_PERMISSION_KEY = "landverify:locationPermission";
 
 function App() {
 	const [viewState, setViewState] = useState(PARCEL_CENTER);
@@ -50,6 +55,79 @@ function App() {
 		const timer = setTimeout(() => setShowSplash(false), 5000);
 		return () => clearTimeout(timer);
 	}, []);
+
+	const requestInitialLocation = useCallback(() => {
+		if (!navigator.geolocation) {
+			return;
+		}
+
+		try {
+			const permission = localStorage.getItem(LOCATION_PERMISSION_KEY);
+			const cachedLocation = localStorage.getItem(LOCATION_CACHE_KEY);
+
+			if (permission === "denied") {
+				return;
+			}
+
+			if (cachedLocation) {
+				const parsed = JSON.parse(cachedLocation);
+				if (parsed?.latitude && parsed?.longitude) {
+					setUserLocation(parsed);
+					setFollowUserLocation(true);
+					setViewState((prev) => ({
+						...prev,
+						latitude: parsed.latitude,
+						longitude: parsed.longitude,
+						zoom: Math.max(prev.zoom, 15),
+					}));
+					return;
+				}
+			}
+		} catch (error) {
+			console.warn("Failed to read cached location:", error);
+		}
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				const { latitude, longitude, accuracy } = position.coords;
+				const locationPayload = { latitude, longitude, accuracy };
+				setUserLocation(locationPayload);
+				setFollowUserLocation(true);
+				setViewState((prev) => ({
+					...prev,
+					latitude,
+					longitude,
+					zoom: Math.max(prev.zoom, 15),
+				}));
+
+				try {
+					localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(locationPayload));
+					localStorage.setItem(LOCATION_PERMISSION_KEY, "granted");
+				} catch (error) {
+					console.warn("Failed to cache location:", error);
+				}
+			},
+			(error) => {
+				console.warn("Geolocation error:", error);
+				try {
+					localStorage.setItem(LOCATION_PERMISSION_KEY, "denied");
+				} catch (storageError) {
+					console.warn("Failed to cache location permission:", storageError);
+				}
+			},
+			{
+				enableHighAccuracy: true,
+				maximumAge: 0,
+				timeout: 10000,
+			},
+		);
+	}, []);
+
+	useEffect(() => {
+		if (!showSplash) {
+			requestInitialLocation();
+		}
+	}, [showSplash, requestInitialLocation]);
 
 	// Log loading state changes
 	// Track all state changes comprehensively
@@ -91,14 +169,14 @@ function App() {
 		console.log(`✅ DISPATCHER: ${localParcels.features.length} parcels loaded`);
 
 		// Only auto-display if zoomed in enough
-		if (viewState.zoom >= 14) {
-			console.log("📋 Zoom >= 14, displaying parcels");
+		if (viewState.zoom >= MIN_PARCEL_ZOOM && viewState.zoom <= MAX_PARCEL_ZOOM) {
+			console.log("📋 Zoom in range, displaying parcels");
 			setVisibleParcels({
 				type: "FeatureCollection",
 				features: localParcels.features,
 			});
 		} else {
-			console.log(`📋 Zoom ${viewState.zoom.toFixed(1)} < 14, hiding parcels (zoom in to see)`);
+			console.log(`📋 Zoom ${viewState.zoom.toFixed(1)} outside parcel range, hiding parcels`);
 			setVisibleParcels(null);
 		}
 	}, [localParcels, viewState.zoom]);
@@ -185,6 +263,13 @@ function App() {
 						accuracy,
 					});
 
+					try {
+						localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(smoothedDisplayLocation.current));
+						localStorage.setItem(LOCATION_PERMISSION_KEY, "granted");
+					} catch (error) {
+						console.warn("Failed to cache location:", error);
+					}
+
 					// Center map on location if following
 					if (followUserLocation) {
 						setViewState((prev) => ({
@@ -247,46 +332,46 @@ function App() {
 				features: [
 					{
 						type: "Feature",
-						geometry: {
-							type: "Point",
-							coordinates: [userLocation.longitude, userLocation.latitude],
-						},
-						properties: {
-							accuracy: userLocation.accuracy ?? null,
-						},
-					},
-				],
-			}
-		: null;
+						onMove={(evt) => {
+							setViewState(evt.viewState);
+							if (evt.originalEvent) {
+								isUserPanning.current = true;
+								setFollowUserLocation(false);
+							}
 
-	const onMapClick = async (event) => {
-		console.log("App: Map clicked at:", event.lngLat);
+							// Use tile-based system if available and zoomed in enough (zoom 13-20)
+							if (tilesManifest && evt.viewState.zoom >= MIN_PARCEL_ZOOM && evt.viewState.zoom <= MAX_PARCEL_ZOOM) {
+								const map = evt.target;
+								const bounds = map.getBounds();
+								const viewportBounds = {
+									minLng: bounds.getWest(),
+									maxLng: bounds.getEast(),
+									minLat: bounds.getSouth(),
+									maxLat: bounds.getNorth(),
+								};
 
-		const parcel = await handleMapClick(event);
-		console.log("App: Received parcel from handleMapClick:", parcel);
-		setSelectedParcel(parcel);
-		console.log("App: Selected parcel state updated");
-	};
+								// Update which tiles should be loaded for current viewport
+								updateVisibleTiles(viewportBounds);
 
-	const handleAddressSearch = async (e) => {
-		e.preventDefault();
-		if (!searchQuery.trim()) return;
-
-		setSearchLoading(true);
-		try {
-			console.log("Searching for address:", searchQuery);
-			const result = await geocodeAddress(searchQuery);
-
-			if (!result) {
-				alert("Address not found. Please try a different search.");
-				setSearchLoading(false);
-				return;
-			}
-
-			// Zoom to the address
-			const newViewState = {
-				latitude: result.latitude,
-				longitude: result.longitude,
+								// Get combined GeoJSON of all visible tiles with viewport culling
+								const parcels = getVisibleParcels(viewportBounds);
+								if (parcels && parcels.features && parcels.features.length > 0) {
+									console.log(`\ud83c\udfaf Tile-based display: ${parcels.features.length} parcels visible at zoom ${evt.viewState.zoom.toFixed(1)}`);
+									setVisibleParcels(parcels);
+								} else {
+									console.log("\u26a0\ufe0f No tiles contain data for current viewport");
+									setVisibleParcels(null);
+								}
+							} else {
+								// Outside zoom range or no tiles available - hide parcels
+								if (evt.viewState.zoom < MIN_PARCEL_ZOOM || evt.viewState.zoom > MAX_PARCEL_ZOOM) {
+									console.log(`\u25c0 Zoom ${evt.viewState.zoom.toFixed(1)} outside parcel range - parcels hidden`);
+								} else if (!tilesManifest) {
+									console.log("\ud83d\udce6 Tile manifest not ready yet");
+								}
+								setVisibleParcels(null);
+							}
+						}}
 				zoom: 18,
 			};
 			setViewState(newViewState);
@@ -372,7 +457,7 @@ function App() {
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
 				minZoom={4}
-				maxZoom={18}
+				maxZoom={20}
 				cursor="crosshair">
 				{/* All Visible Parcels */}
 				{visibleParcels && visibleParcels.features && visibleParcels.features.length > 0 && (

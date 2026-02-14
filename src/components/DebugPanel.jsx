@@ -95,8 +95,8 @@ export default function DebugPanel({
 						<div className="text-gray-400">View State:</div>
 						<div>
 							Zoom: <span className="text-neon-green text-lg font-bold">{viewState.zoom.toFixed(2)}</span>
-							<span className={viewState.zoom >= 14 ? "text-green-400 ml-2" : "text-yellow-400 ml-2"}>
-								{viewState.zoom >= 14 ? "✅ PARCELS ACTIVE" : "🔍 ZOOM IN 14+"}
+								<\span className={viewState.zoom >= 13 ? "text-green-400 ml-2" : "text-yellow-400 ml-2"}>
+									{viewState.zoom >= 13 ? "\u2705 PARCELS ACTIVE" : "\ud83d\udd0d ZOOM IN 13+"}
 							</span>
 						</div>
 						<div>
