@@ -16,7 +16,7 @@ import "./services/errorTracker"; // Initialize error tracking
 const PARCEL_CENTER = {
 	latitude: 38.53,
 	longitude: -92.24,
-	zoom: 12,
+	zoom: 16,
 };
 
 function App() {
@@ -81,27 +81,27 @@ function App() {
 		}
 	}, []);
 
-	// Display parcels when they load
+	// Display parcels when they load - but ONLY if already zoomed in
 	useEffect(() => {
 		if (!localParcels?.features) {
 			console.log("⏳ Waiting for parcels to load...");
 			return;
 		}
 
-		console.log(`✅ DISPATCHER: ${localParcels.features.length} parcels loaded, displaying them`);
-		console.log("📋 Parcel data structure:", {
-			type: localParcels.type,
-			featureCount: localParcels.features.length,
-			firstFeature: localParcels.features[0],
-		});
+		console.log(`✅ DISPATCHER: ${localParcels.features.length} parcels loaded`);
 
-		setVisibleParcels({
-			type: "FeatureCollection",
-			features: localParcels.features,
-		});
-
-		console.log("🎨 SET VISIBLE PARCELS - should show on map now");
-	}, [localParcels]);
+		// Only auto-display if zoomed in enough
+		if (viewState.zoom >= 14) {
+			console.log("📋 Zoom >= 14, displaying parcels");
+			setVisibleParcels({
+				type: "FeatureCollection",
+				features: localParcels.features,
+			});
+		} else {
+			console.log(`📋 Zoom ${viewState.zoom.toFixed(1)} < 14, hiding parcels (zoom in to see)`);
+			setVisibleParcels(null);
+		}
+	}, [localParcels, viewState.zoom]);
 
 	// Handle admin panel location clicks
 	const handleAdminLocationClick = (lat, lng, zoom = 18) => {
@@ -349,8 +349,8 @@ function App() {
 						// Update which tiles should be loaded for current viewport
 						updateVisibleTiles(viewportBounds);
 
-						// Get combined GeoJSON of all visible tiles
-						const parcels = getVisibleParcels();
+					// Get combined GeoJSON of all visible tiles with viewport culling
+					const parcels = getVisibleParcels(viewportBounds);
 						if (parcels && parcels.features && parcels.features.length > 0) {
 							console.log(`🎯 Tile-based display: ${parcels.features.length} parcels visible at zoom ${evt.viewState.zoom.toFixed(1)}`);
 							setVisibleParcels(parcels);

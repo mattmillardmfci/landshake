@@ -174,29 +174,57 @@ const useTileBasedParcels = () => {
 
 	/**
 	 * Get combined GeoJSON from all visible cached tiles
+	 * with viewport culling to only include features in view
 	 */
-	const getVisibleParcels = useCallback(() => {
-		const allFeatures = [];
+	const getVisibleParcels = useCallback(
+		(viewportBounds = null) => {
+			const allFeatures = [];
 
-		for (const tileId of visibleTiles) {
-			const tileData = tileCache.get(tileId);
-			if (tileData?.features) {
-				allFeatures.push(...tileData.features);
+			for (const tileId of visibleTiles) {
+				const tileData = tileCache.get(tileId);
+				if (tileData?.features) {
+					allFeatures.push(...tileData.features);
+				}
 			}
-		}
 
-		if (allFeatures.length === 0) {
-			console.log("⏳ No tiles loaded yet");
-			return null;
-		}
+			if (allFeatures.length === 0) {
+				console.log("⏳ No tiles loaded yet");
+				return null;
+			}
 
-		console.log(`📊 Combining ${allFeatures.length} features from ${visibleTiles.size} tiles`);
+			// Filter features to only those within viewport bounds
+			let filteredFeatures = allFeatures;
+			if (viewportBounds) {
+				filteredFeatures = allFeatures.filter((feature) => {
+					const geometry = feature.geometry;
+					if (!geometry || !geometry.coordinates) return false;
 
-		return {
-			type: "FeatureCollection",
-			features: allFeatures,
-		};
-	}, [visibleTiles, tileCache]);
+					// For polygons and multipolygons, check if any coordinate is in viewport
+					const coords = geometry.type === "MultiPolygon" ? geometry.coordinates.flat(2) : geometry.coordinates.flat(1);
+
+					return coords.some((coord) => {
+						const [lng, lat] = coord;
+						return (
+							lng >= viewportBounds.minLng &&
+							lng <= viewportBounds.maxLng &&
+							lat >= viewportBounds.minLat &&
+							lat <= viewportBounds.maxLat
+						);
+					});
+				});
+
+				console.log(`📊 Filtered ${allFeatures.length} → ${filteredFeatures.length} features (viewport culling)`);
+			} else {
+				console.log(`📊 Combining ${allFeatures.length} features from ${visibleTiles.size} tiles (no culling)`);
+			}
+
+			return {
+				type: "FeatureCollection",
+				features: filteredFeatures,
+			};
+		},
+		[visibleTiles, tileCache],
+	);
 
 	/**
 	 * Clear cache to free memory

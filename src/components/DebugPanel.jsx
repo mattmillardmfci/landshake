@@ -94,17 +94,20 @@ export default function DebugPanel({
 					<div className="text-gray-300 mb-2 border-t border-gray-600 pt-2">
 						<div className="text-gray-400">View State:</div>
 						<div>
+							Zoom: <span className="text-neon-green text-lg font-bold">{viewState.zoom.toFixed(2)}</span>
+							<span className={viewState.zoom >= 14 ? "text-green-400 ml-2" : "text-yellow-400 ml-2"}>
+								{viewState.zoom >= 14 ? "✅ PARCELS ACTIVE" : "🔍 ZOOM IN 14+"}
+							</span>
+						</div>
+						<div>
 							Lat: <span className="text-neon-green">{viewState.latitude.toFixed(4)}</span>
 						</div>
 						<div>
 							Lng: <span className="text-neon-green">{viewState.longitude.toFixed(4)}</span>
 						</div>
-						<div>
-							Zoom: <span className="text-neon-green">{viewState.zoom.toFixed(2)}</span>
-						</div>
 					</div>
 
-					{/* Parcel Loading State */}
+					{/* Parcel Data */}
 					<div className="text-gray-300 mb-2 border-t border-gray-600 pt-2">
 						<div className="text-gray-400">Parcel Data:</div>
 						<div>Loading: {loadingParcels ? "🔄" : "✅"}</div>
