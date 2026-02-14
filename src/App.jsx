@@ -11,11 +11,12 @@ import { logQuery, logGeolocation } from "./services/queryLogger";
 import { trackVisitor } from "./services/visitorTracker";
 import "./services/errorTracker"; // Initialize error tracking
 
-// Parcel data center - focused on loaded parcel area
+// Parcel data center - focused on actual loaded parcel area
+// Data is clustered at -110.26, 34.509 in a ~1km area
 const PARCEL_CENTER = {
-	latitude: 34.55,
-	longitude: -110.15,
-	zoom: 11,
+	latitude: 34.509388,
+	longitude: -110.26463,
+	zoom: 18,
 };
 
 function App() {
