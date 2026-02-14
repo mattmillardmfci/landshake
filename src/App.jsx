@@ -60,42 +60,18 @@ function App() {
 		}
 	}, []);
 
-	// Trigger initial parcel display when parcels load and we're in Cole County
+	// Display parcels when they load
 	useEffect(() => {
-		if (!localParcels?.features) return;
-
-		console.log("🗺️ Parcels loaded, checking if we should display them at current location...");
-		console.log("Current position:", { lat: viewState.latitude, lng: viewState.longitude, zoom: viewState.zoom });
-
-		// Updated bounds based on actual parcel coordinates (not Missouri!)
-		const PARCEL_BOUNDS = {
-			west: -110.3,
-			east: -110.0,
-			south: 34.4,
-			north: 34.7,
-		};
-
-		const isInParcels =
-			viewState.longitude >= PARCEL_BOUNDS.west &&
-			viewState.longitude <= PARCEL_BOUNDS.east &&
-			viewState.latitude >= PARCEL_BOUNDS.south &&
-			viewState.latitude <= PARCEL_BOUNDS.north;
-
-		console.log("Is in parcel bounds:", isInParcels);
-
-		if (isInParcels && viewState.zoom >= 10) {
-			// Show all parcels when in bounds and zoomed in
-			const filtered = localParcels.features;
-
-			console.log(`✅ Displaying ${filtered.length} parcels`);
-			setVisibleParcels({
-				type: "FeatureCollection",
-				features: filtered,
-			});
-		} else {
-			console.log("Not displaying parcels (out of bounds or zoom too low)");
-			setVisibleParcels(null);
+		if (!localParcels?.features) {
+			console.log("⏳ Waiting for parcels to load...");
+			return;
 		}
+
+		console.log(`✅ ${localParcels.features.length} parcels loaded, displaying them`);
+		setVisibleParcels({
+			type: "FeatureCollection",
+			features: localParcels.features,
+		});
 	}, [localParcels]);
 
 	// Handle admin panel location clicks
