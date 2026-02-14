@@ -10,21 +10,15 @@ import { logQuery, logGeolocation } from "./services/queryLogger";
 import { trackVisitor } from "./services/visitorTracker";
 import "./services/errorTracker"; // Initialize error tracking
 
-// Missouri boundaries - Jefferson City center
-const MISSOURI_CENTER = {
-	latitude: 38.5767,
-	longitude: -92.1735,
-	zoom: 7,
+// Parcel data center - focused on loaded parcel area
+const PARCEL_CENTER = {
+	latitude: 34.55,
+	longitude: -110.15,
+	zoom: 11,
 };
 
-// Missouri boundaries for max bounds
-const MISSOURI_BOUNDS = [
-	[-95.774704, 35.995683], // Southwest coordinates
-	[-89.098843, 40.61364], // Northeast coordinates
-];
-
 function App() {
-	const [viewState, setViewState] = useState(MISSOURI_CENTER);
+	const [viewState, setViewState] = useState(PARCEL_CENTER);
 	const [selectedParcel, setSelectedParcel] = useState(null);
 	const [userLocation, setUserLocation] = useState(null);
 	const [locationError, setLocationError] = useState(null);
@@ -385,8 +379,7 @@ function App() {
 				onClick={onMapClick}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
-				maxBounds={MISSOURI_BOUNDS}
-				minZoom={6}
+				minZoom={4}
 				maxZoom={18}
 				cursor="crosshair">
 				{/* All Visible Parcels */}
