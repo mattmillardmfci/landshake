@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Map, { Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import useMissouriParcels from "./hooks/useMissouriParcels";
+import useTileBasedParcels from "./hooks/useTileBasedParcels";
 import ContactCard from "./components/ContactCard";
 import AdminPanel from "./components/AdminPanel";
 import DebugPanel from "./components/DebugPanel";
@@ -36,6 +37,10 @@ function App() {
 
 	const { parcels, selectedParcelData, handleMapClick, loadParcelsForBounds, isLoading, loadingParcels, localParcels } =
 		useMissouriParcels();
+
+	// Tile-based parcel loading
+	const { updateVisibleTiles, getVisibleParcels, tilesManifest, error: tilesError } = useTileBasedParcels();
+	const [useTiles, setUseTiles] = useState(true); // Toggle between full load and tile-based
 
 	const [visibleParcels, setVisibleParcels] = useState(null);
 

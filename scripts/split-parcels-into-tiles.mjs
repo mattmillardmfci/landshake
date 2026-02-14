@@ -10,12 +10,12 @@ const GEOJSON_PATH = "./public/data/cole_parcels.geojson";
 const TILES_DIR = "./public/data/tiles";
 const TILES_MANIFEST = "./public/data/tiles.json";
 
-// Cole County bounds
+// Actual parcel data bounds (corrected coordinates)
 const COLE_BOUNDS = {
-	minLng: -92.55,
-	maxLng: -91.73,
-	minLat: 38.35,
-	maxLat: 38.79,
+	minLng: -110.3,
+	maxLng: -110.0,
+	minLat: 34.4,
+	maxLat: 34.7,
 };
 
 // Create a 4x4 grid (16 tiles)

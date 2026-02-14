@@ -66,7 +66,7 @@ window.fetch = function (...args) {
 			? "⚠️ FETCH ABORTED" 
 			: error.message || String(error);
 			
-		console.error("❌ FETCH ERROR:\n  URL:\", String(resource), "\n  Error:\", errorMessage, "\n  Duration:\", duration, "ms\n  Stack:\", error.stack);
+		console.error("❌ FETCH ERROR:\n  URL:", String(resource), "\n  Error:", errorMessage, "\n  Duration:", duration, "ms\n  Stack:", error.stack);
 		
 		addError({
 			message: errorMessage,

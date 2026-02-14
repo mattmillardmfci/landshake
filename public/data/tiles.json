@@ -1,13 +1,26 @@
 {
   "bounds": {
-    "minLng": -92.55,
-    "maxLng": -91.73,
-    "minLat": 38.35,
-    "maxLat": 38.79
+    "minLng": -110.3,
+    "maxLng": -110,
+    "minLat": 34.4,
+    "maxLat": 34.7
   },
   "grid": {
     "cols": 4,
     "rows": 4
   },
-  "tiles": []
+  "tiles": [
+    {
+      "col": 0,
+      "row": 1,
+      "file": "tile_0_1.geojson",
+      "bounds": {
+        "minLng": -110.3,
+        "maxLng": -110.225,
+        "minLat": 34.475,
+        "maxLat": 34.55
+      },
+      "featureCount": 35630
+    }
+  ]
 }
