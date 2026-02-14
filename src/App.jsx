@@ -11,12 +11,12 @@ import { logQuery, logGeolocation } from "./services/queryLogger";
 import { trackVisitor } from "./services/visitorTracker";
 import "./services/errorTracker"; // Initialize error tracking
 
-// Parcel data center - focused on actual loaded parcel area
-// Data is clustered at -110.26, 34.509 in a ~1km area
+// Parcel data center - Cole County, Missouri (WGS84)
+// Centered on Columbia, MO area with parcels
 const PARCEL_CENTER = {
-	latitude: 34.509388,
-	longitude: -110.26463,
-	zoom: 18,
+	latitude: 38.53,
+	longitude: -92.24,
+	zoom: 12,
 };
 
 function App() {

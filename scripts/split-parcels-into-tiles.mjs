@@ -10,12 +10,13 @@ const GEOJSON_PATH = "./public/data/cole_parcels.geojson";
 const TILES_DIR = "./public/data/tiles";
 const TILES_MANIFEST = "./public/data/tiles.json";
 
-// Actual parcel data bounds (corrected coordinates)
+// Actual parcel data bounds - Cole County, Missouri (WGS84)
+// From actual parcel geometry coordinates
 const COLE_BOUNDS = {
-	minLng: -110.3,
-	maxLng: -110.0,
-	minLat: 34.4,
-	maxLat: 34.7,
+	minLng: -92.49569,
+	maxLng: -92.00088,
+	minLat: 38.32357,
+	maxLat: 38.73665,
 };
 
 // Create a 4x4 grid (16 tiles)
@@ -39,15 +40,27 @@ function pointInBbox(lat, lng, bbox) {
 }
 
 function featureInBbox(feature, bbox) {
-	const bbox_prop = feature.properties?.__bbox;
-	if (!bbox_prop) return false;
+	// Get bounds from geometry coordinates
+	if (!feature.geometry || !feature.geometry.coordinates) return false;
 
-	// bbox format: [minLng, minLat, maxLng, maxLat]
+	let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+
+	const coords = feature.geometry.coordinates[0];
+	if (!coords || !Array.isArray(coords)) return false;
+
+	for (const [lng, lat] of coords) {
+		minLng = Math.min(minLng, lng);
+		maxLng = Math.max(maxLng, lng);
+		minLat = Math.min(minLat, lat);
+		maxLat = Math.max(maxLat, lat);
+	}
+
+	// Check if feature bbox intersects with tile bbox
 	return !(
-		bbox_prop[2] < bbox.minLng ||
-		bbox_prop[0] > bbox.maxLng ||
-		bbox_prop[3] < bbox.minLat ||
-		bbox_prop[1] > bbox.maxLat
+		maxLng < bbox.minLng ||
+		minLng > bbox.maxLng ||
+		maxLat < bbox.minLat ||
+		minLat > bbox.maxLat
 	);
 }
 

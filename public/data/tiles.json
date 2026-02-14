@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minLng": -110.3,
-    "maxLng": -110,
-    "minLat": 34.4,
-    "maxLat": 34.7
+    "minLng": -92.49569,
+    "maxLng": -92.00088,
+    "minLat": 38.32357,
+    "maxLat": 38.73665
   },
   "grid": {
     "cols": 4,
@@ -12,15 +12,195 @@
   "tiles": [
     {
       "col": 0,
+      "row": 0,
+      "file": "tile_0_0.geojson",
+      "bounds": {
+        "minLng": -92.49569,
+        "maxLng": -92.37198749999999,
+        "minLat": 38.32357,
+        "maxLat": 38.42684
+      },
+      "featureCount": 1022
+    },
+    {
+      "col": 1,
+      "row": 0,
+      "file": "tile_1_0.geojson",
+      "bounds": {
+        "minLng": -92.37198749999999,
+        "maxLng": -92.248285,
+        "minLat": 38.32357,
+        "maxLat": 38.42684
+      },
+      "featureCount": 1514
+    },
+    {
+      "col": 2,
+      "row": 0,
+      "file": "tile_2_0.geojson",
+      "bounds": {
+        "minLng": -92.248285,
+        "maxLng": -92.1245825,
+        "minLat": 38.32357,
+        "maxLat": 38.42684
+      },
+      "featureCount": 1372
+    },
+    {
+      "col": 3,
+      "row": 0,
+      "file": "tile_3_0.geojson",
+      "bounds": {
+        "minLng": -92.1245825,
+        "maxLng": -92.00088,
+        "minLat": 38.32357,
+        "maxLat": 38.42684
+      },
+      "featureCount": 611
+    },
+    {
+      "col": 0,
       "row": 1,
       "file": "tile_0_1.geojson",
       "bounds": {
-        "minLng": -110.3,
-        "maxLng": -110.225,
-        "minLat": 34.475,
-        "maxLat": 34.55
+        "minLng": -92.49569,
+        "maxLng": -92.37198749999999,
+        "minLat": 38.42684,
+        "maxLat": 38.53010999999999
       },
-      "featureCount": 35630
+      "featureCount": 1806
+    },
+    {
+      "col": 1,
+      "row": 1,
+      "file": "tile_1_1.geojson",
+      "bounds": {
+        "minLng": -92.37198749999999,
+        "maxLng": -92.248285,
+        "minLat": 38.42684,
+        "maxLat": 38.53010999999999
+      },
+      "featureCount": 2103
+    },
+    {
+      "col": 2,
+      "row": 1,
+      "file": "tile_2_1.geojson",
+      "bounds": {
+        "minLng": -92.248285,
+        "maxLng": -92.1245825,
+        "minLat": 38.42684,
+        "maxLat": 38.53010999999999
+      },
+      "featureCount": 3178
+    },
+    {
+      "col": 3,
+      "row": 1,
+      "file": "tile_3_1.geojson",
+      "bounds": {
+        "minLng": -92.1245825,
+        "maxLng": -92.00088,
+        "minLat": 38.42684,
+        "maxLat": 38.53010999999999
+      },
+      "featureCount": 2194
+    },
+    {
+      "col": 0,
+      "row": 2,
+      "file": "tile_0_2.geojson",
+      "bounds": {
+        "minLng": -92.49569,
+        "maxLng": -92.37198749999999,
+        "minLat": 38.53010999999999,
+        "maxLat": 38.633379999999995
+      },
+      "featureCount": 1410
+    },
+    {
+      "col": 1,
+      "row": 2,
+      "file": "tile_1_2.geojson",
+      "bounds": {
+        "minLng": -92.37198749999999,
+        "maxLng": -92.248285,
+        "minLat": 38.53010999999999,
+        "maxLat": 38.633379999999995
+      },
+      "featureCount": 8852
+    },
+    {
+      "col": 2,
+      "row": 2,
+      "file": "tile_2_2.geojson",
+      "bounds": {
+        "minLng": -92.248285,
+        "maxLng": -92.1245825,
+        "minLat": 38.53010999999999,
+        "maxLat": 38.633379999999995
+      },
+      "featureCount": 16379
+    },
+    {
+      "col": 3,
+      "row": 2,
+      "file": "tile_3_2.geojson",
+      "bounds": {
+        "minLng": -92.1245825,
+        "maxLng": -92.00088,
+        "minLat": 38.53010999999999,
+        "maxLat": 38.633379999999995
+      },
+      "featureCount": 1586
+    },
+    {
+      "col": 0,
+      "row": 3,
+      "file": "tile_0_3.geojson",
+      "bounds": {
+        "minLng": -92.49569,
+        "maxLng": -92.37198749999999,
+        "minLat": 38.633379999999995,
+        "maxLat": 38.73665
+      },
+      "featureCount": 870
+    },
+    {
+      "col": 1,
+      "row": 3,
+      "file": "tile_1_3.geojson",
+      "bounds": {
+        "minLng": -92.37198749999999,
+        "maxLng": -92.248285,
+        "minLat": 38.633379999999995,
+        "maxLat": 38.73665
+      },
+      "featureCount": 880
+    },
+    {
+      "col": 2,
+      "row": 3,
+      "file": "tile_2_3.geojson",
+      "bounds": {
+        "minLng": -92.248285,
+        "maxLng": -92.1245825,
+        "minLat": 38.633379999999995,
+        "maxLat": 38.73665
+      },
+      "featureCount": 607
+    },
+    {
+      "col": 3,
+      "row": 3,
+      "file": "tile_3_3.geojson",
+      "bounds": {
+        "minLng": -92.1245825,
+        "maxLng": -92.00088,
+        "minLat": 38.633379999999995,
+        "maxLat": 38.73665
+      },
+      "featureCount": 581
     }
   ]
 }
