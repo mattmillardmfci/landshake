@@ -26,7 +26,7 @@ function App() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchLoading, setSearchLoading] = useState(false);
 	const [showSplash, setShowSplash] = useState(true);
-	const [followUserLocation, setFollowUserLocation] = useState(true);
+	const [followUserLocation, setFollowUserLocation] = useState(false);
 	const hasCenteredOnUser = useRef(false);
 	const hasLoggedGeolocation = useRef(false);
 	const isUserPanning = useRef(false);
@@ -190,31 +190,16 @@ function App() {
 					hasLoggedGeolocation.current = true;
 				}
 
-				const inMissouriBounds =
-					longitude >= MISSOURI_BOUNDS[0][0] &&
-					longitude <= MISSOURI_BOUNDS[1][0] &&
-					latitude >= MISSOURI_BOUNDS[0][1] &&
-					latitude <= MISSOURI_BOUNDS[1][1];
+				const inParcelBounds =
+					longitude >= -110.3 &&
+					longitude <= -110.0 &&
+					latitude >= 34.4 &&
+					latitude <= 34.7;
 
-				// Center on user if they haven't manually panned yet
-				if (!hasCenteredOnUser.current) {
-					hasCenteredOnUser.current = true;
-				}
-
-				// Follow user location if enabled and user hasn't manually panned
-				if (followUserLocation && !isUserPanning.current && shouldUpdate) {
-					setViewState((prev) => ({
-						...prev,
-						latitude: smoothedDisplayLocation.current?.latitude ?? latitude,
-						longitude: smoothedDisplayLocation.current?.longitude ?? longitude,
-						zoom: prev.zoom < 15 ? 18 : prev.zoom,
-					}));
-				}
-
-				// Show warning if outside Missouri but don't prevent tracking
-				if (!inMissouriBounds) {
-					console.warn("User location outside Missouri bounds");
-					setLocationError("Location tracking active (outside Missouri service area)");
+				// Show warning if outside parcel area
+				if (!inParcelBounds) {
+					console.warn("User location outside parcel service area");
+					setLocationError("You are outside the parcel data area");
 				}
 			},
 			(error) => {
