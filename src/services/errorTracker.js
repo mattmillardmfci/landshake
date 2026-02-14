@@ -34,7 +34,9 @@ export const clearErrors = () => {
 // Intercept fetch calls globally
 const originalFetch = window.fetch;
 window.fetch = function (...args) {
-	const [resource] = args;
+	const [resource, config] = args;
+	console.log("🔗 FETCH REQUEST:\n  URL:\", String(resource), "\n  Config:\", config);
+	
 	const startTime = Date.now();
 
 	return originalFetch.apply(this, args).then((response) => {
@@ -49,7 +51,7 @@ window.fetch = function (...args) {
 				},
 				{
 					url: String(resource),
-					method: args[1]?.method || "GET",
+					method: config?.method || "GET",
 					duration: `${duration}ms`,
 				}
 			);
@@ -57,17 +59,22 @@ window.fetch = function (...args) {
 
 		return response;
 	}).catch((error) => {
+		const duration = Date.now() - startTime;
+		
 		// Log error with clear message
 		const errorMessage = error.name === 'AbortError' 
 			? "⚠️ FETCH ABORTED" 
 			: error.message || String(error);
 			
+		console.error("❌ FETCH ERROR:\n  URL:\", String(resource), "\n  Error:\", errorMessage, "\n  Duration:\", duration, "ms\n  Stack:\", error.stack);
+		
 		addError({
 			message: errorMessage,
 			name: error.name,
 		}, {
 			url: String(resource),
 			type: error.name === 'AbortError' ? "Fetch Aborted" : "Network Error",
+			duration: `${duration}ms`,
 		});
 		throw error;
 	});

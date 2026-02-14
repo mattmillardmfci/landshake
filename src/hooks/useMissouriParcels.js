@@ -28,34 +28,45 @@ const useMissouriParcels = () => {
 			console.log("🚀 STARTING PARCEL LOAD (NEW CODE) - Loading from /data/cole_parcels.geojson...");
 
 			try {
+				console.log("📡 Creating fetch request for parcel data...");
 				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+				const timeoutId = setTimeout(() => {
+					console.error("⏰ 30 second timeout triggered, aborting fetch...");
+					controller.abort();
+				}, 30000);
 
+				console.log("🔗 Fetch URL: /data/cole_parcels.geojson");
 				const response = await fetch("/data/cole_parcels.geojson", {
 					method: "GET",
 					signal: controller.signal,
 				});
 
 				clearTimeout(timeoutId);
+				console.log("✅ Fetch completed, response status:", response.status);
 
 				if (!response.ok) {
 					throw new Error(`Failed to load parcel dataset: ${response.status}`);
 				}
 
-				console.log("Parcel data fetched, parsing JSON...");
+				console.log("📦 Response received, parsing JSON...");
 				const data = await response.json();
+				console.log("✨ JSON parsed successfully, size:", JSON.stringify(data).length / 1024 / 1024, "MB");
 
 				if (!data || data.type !== "FeatureCollection") {
 					throw new Error("Parcel dataset is not a FeatureCollection.");
 				}
 
 				setLocalParcels(data);
-				console.log("✅ Successfully loaded Cole County parcels:", data.features?.length ?? 0);
+				console.log("✅ Successfully loaded Cole County parcels:", data.features?.length ?? 0, "parcels");
 			} catch (error) {
 				if (error.name === "AbortError") {
-					console.error("❌ FETCH ABORTED - Parcel data fetch timed out after 30 seconds");
+					console.error("⚠️ FETCH ABORTED");
+					console.error("Error name:", error.name);
+					console.error("Error message:", error.message);
+					console.error("Reason: Likely due to Vercel timeout or exceeded data size");
 				} else {
 					console.error("❌ Failed to load local parcel data:", error);
+					console.error("Error:", error.message);
 				}
 			} finally {
 				setLoadingParcels(false);

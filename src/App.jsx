@@ -54,8 +54,9 @@ function App() {
 	// Log loading state changes
 	useEffect(() => {
 		console.log("📦 Parcel loading state:", loadingParcels ? "LOADING..." : "READY");
-		console.log("📊 Local parcels available:", localParcels ? `${localParcels.features?.length} features` : "NOT LOADED");
-	}, [loadingParcels, localParcels]);
+		console.log("📊 Local parcels available:", localParcels ? `${localParcels.features?.length} features, size: ${JSON.stringify(localParcels).length / 1024 / 1024}MB` : "NOT LOADED");
+		console.log("👀 Visible parcels on map:", visibleParcels?.features?.length ?? 0);
+	}, [loadingParcels, localParcels, visibleParcels]);
 
 	// Track visitor on initial load
 	useEffect(() => {
