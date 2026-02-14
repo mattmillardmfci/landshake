@@ -125,9 +125,9 @@ function App() {
 	};
 
 	// Get user's current location on component mount
+	// Start geolocation watch when user enables location tracking
 	useEffect(() => {
-		if (!navigator.geolocation) {
-			setLocationError("Geolocation is not supported by this browser.");
+		if (!followUserLocation || !navigator.geolocation) {
 			return;
 		}
 
@@ -179,6 +179,16 @@ function App() {
 						longitude: smoothedDisplayLocation.current.longitude,
 						accuracy,
 					});
+
+					// Center map on location if following
+					if (followUserLocation) {
+						setViewState((prev) => ({
+							...prev,
+							latitude: smoothedDisplayLocation.current.latitude,
+							longitude: smoothedDisplayLocation.current.longitude,
+							zoom: prev.zoom < 15 ? 18 : prev.zoom,
+						}));
+					}
 				}
 
 				setLocationError(null);
@@ -216,7 +226,7 @@ function App() {
 		return () => {
 			navigator.geolocation.clearWatch(watchId);
 		};
-	}, []);
+	}, [followUserLocation]);
 
 	useEffect(() => {
 		const intervalId = setInterval(() => {
