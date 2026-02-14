@@ -10,17 +10,17 @@ const [useTiles, setUseTiles] = useState(true); // Toggle between tile and full-
 
 // REPLACE THE onMove HANDLER LOGIC (around line 330-370) with:
 onMove={(evt) => {
-  setViewState(evt.viewState);
-  if (evt.originalEvent) {
-    isUserPanning.current = true;
-    setFollowUserLocation(false);
-  }
+setViewState(evt.viewState);
+if (evt.originalEvent) {
+isUserPanning.current = true;
+setFollowUserLocation(false);
+}
 
-  // Try tile-based loading first if available
-  if (useTiles && tilesManifest && evt.viewState.zoom >= 10) {
-    const map = evt.target;
-    const bounds = map.getBounds();
-    
+// Try tile-based loading first if available
+if (useTiles && tilesManifest && evt.viewState.zoom >= 10) {
+const map = evt.target;
+const bounds = map.getBounds();
+
     const viewportBounds = {
       minLng: bounds.getWest(),
       maxLng: bounds.getEast(),
@@ -30,39 +30,41 @@ onMove={(evt) => {
 
     // Load tiles for current viewport + preload surrounding
     updateVisibleTiles(viewportBounds);
-    
+
     // Get combined GeoJSON from all visible tiles
     const parcels = getVisibleParcels();
     if (parcels) {
       console.log(`🎯 Showing ${parcels.features.length} parcels from tiles at zoom ${evt.viewState.zoom.toFixed(1)}`);
       setVisibleParcels(parcels);
     }
-  } else if (!useTiles && evt.viewState.zoom >= 10 && localParcels?.features) {
-    // Fallback to full dataset if tiles not available
-    console.log(`🗺️ Using full dataset - ${localParcels.features.length} parcels`);
-    setVisibleParcels({
-      type: "FeatureCollection",
-      features: localParcels.features,
-    });
-  } else {
-    // Zoom too low, hide parcels
-    console.log("🗺️ Zoom < 10 - hiding parcels");
-    setVisibleParcels(null);
-  }
+
+} else if (!useTiles && evt.viewState.zoom >= 10 && localParcels?.features) {
+// Fallback to full dataset if tiles not available
+console.log(`🗺️ Using full dataset - ${localParcels.features.length} parcels`);
+setVisibleParcels({
+type: "FeatureCollection",
+features: localParcels.features,
+});
+} else {
+// Zoom too low, hide parcels
+console.log("🗺️ Zoom < 10 - hiding parcels");
+setVisibleParcels(null);
+}
 }}
 
 // OPTIONAL: Add a toggle button to App.jsx (around line 556 where the location button is):
-{/* Toggle tile-based loading */}
+{/_ Toggle tile-based loading _/}
 <button
-  onClick={() => setUseTiles(!useTiles)}
-  className="absolute bottom-24 right-6 z-20 bg-green-600 hover:bg-green-700 text-white text-xs p-2 rounded shadow-lg"
-  title="Toggle tile-based loading">
-  {useTiles ? "Tiles: ON" : "Tiles: OFF"}
+onClick={() => setUseTiles(!useTiles)}
+className="absolute bottom-24 right-6 z-20 bg-green-600 hover:bg-green-700 text-white text-xs p-2 rounded shadow-lg"
+title="Toggle tile-based loading">
+{useTiles ? "Tiles: ON" : "Tiles: OFF"}
 </button>
 
 // OPTIONAL: Add tile stats to debug panel (around line 610):
-{/* Tile Loading Debug */}
+{/_ Tile Loading Debug _/}
 {tilesManifest && (
+
   <div>
     <div>Tiles Manifest: {tilesManifest.tiles.length} tiles</div>
     <div>Tiles Error: {tilesError ? "❌ " + tilesError : "✅ None"}</div>

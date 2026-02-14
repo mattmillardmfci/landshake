@@ -36,48 +36,61 @@ const originalFetch = window.fetch;
 window.fetch = function (...args) {
 	const [resource, config] = args;
 	console.log("🔗 FETCH REQUEST:\n  URL:", String(resource), "\n  Config:", config);
-	
+
 	const startTime = Date.now();
 
-	return originalFetch.apply(this, args).then((response) => {
-		const duration = Date.now() - startTime;
+	return originalFetch
+		.apply(this, args)
+		.then((response) => {
+			const duration = Date.now() - startTime;
 
-		// Log error responses
-		if (!response.ok) {
+			// Log error responses
+			if (!response.ok) {
+				addError(
+					{
+						message: `HTTP ${response.status}`,
+						status: response.status,
+					},
+					{
+						url: String(resource),
+						method: config?.method || "GET",
+						duration: `${duration}ms`,
+					},
+				);
+			}
+
+			return response;
+		})
+		.catch((error) => {
+			const duration = Date.now() - startTime;
+
+			// Log error with clear message
+			const errorMessage = error.name === "AbortError" ? "⚠️ FETCH ABORTED" : error.message || String(error);
+
+			console.error(
+				"❌ FETCH ERROR:\n  URL:",
+				String(resource),
+				"\n  Error:",
+				errorMessage,
+				"\n  Duration:",
+				duration,
+				"ms\n  Stack:",
+				error.stack,
+			);
+
 			addError(
 				{
-					message: `HTTP ${response.status}`,
-					status: response.status,
+					message: errorMessage,
+					name: error.name,
 				},
 				{
 					url: String(resource),
-					method: config?.method || "GET",
+					type: error.name === "AbortError" ? "Fetch Aborted" : "Network Error",
 					duration: `${duration}ms`,
-				}
+				},
 			);
-		}
-
-		return response;
-	}).catch((error) => {
-		const duration = Date.now() - startTime;
-		
-		// Log error with clear message
-		const errorMessage = error.name === 'AbortError' 
-			? "⚠️ FETCH ABORTED" 
-			: error.message || String(error);
-			
-		console.error("❌ FETCH ERROR:\n  URL:", String(resource), "\n  Error:", errorMessage, "\n  Duration:", duration, "ms\n  Stack:", error.stack);
-		
-		addError({
-			message: errorMessage,
-			name: error.name,
-		}, {
-			url: String(resource),
-			type: error.name === 'AbortError' ? "Fetch Aborted" : "Network Error",
-			duration: `${duration}ms`,
+			throw error;
 		});
-		throw error;
-	});
 };
 
 export default {

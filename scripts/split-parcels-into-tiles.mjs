@@ -43,7 +43,12 @@ function featureInBbox(feature, bbox) {
 	if (!bbox_prop) return false;
 
 	// bbox format: [minLng, minLat, maxLng, maxLat]
-	return !(bbox_prop[2] < bbox.minLng || bbox_prop[0] > bbox.maxLng || bbox_prop[3] < bbox.minLat || bbox_prop[1] > bbox.maxLat);
+	return !(
+		bbox_prop[2] < bbox.minLng ||
+		bbox_prop[0] > bbox.maxLng ||
+		bbox_prop[3] < bbox.minLat ||
+		bbox_prop[1] > bbox.maxLat
+	);
 }
 
 async function splitParcels() {
