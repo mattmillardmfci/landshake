@@ -50,6 +50,13 @@ function App() {
 
 	const [visibleParcels, setVisibleParcels] = useState(null);
 
+	// Bottom navigation state
+	const [activeNav, setActiveNav] = useState(null); // 'debug', 'tools', 'admin'
+	const [showToolsMenu, setShowToolsMenu] = useState(false);
+	const [drawMode, setDrawMode] = useState(false);
+	const [drawnPoints, setDrawnPoints] = useState([]);
+	const [drawnLines, setDrawnLines] = useState([]);
+
 	// Splash screen timer
 	useEffect(() => {
 		const timer = setTimeout(() => setShowSplash(false), 5000);
@@ -326,6 +333,24 @@ function App() {
 		return () => clearInterval(intervalId);
 	}, []);
 
+	// Build GeoJSON for drawn points and lines
+	const drawnPointsGeoJSON = {
+		type: "FeatureCollection",
+		features: drawnPoints.map((point) => ({
+			type: "Feature",
+			geometry: {
+				type: "Point",
+				coordinates: point,
+			},
+			properties: {},
+		})),
+	};
+
+	const drawnLinesGeoJSON = {
+		type: "FeatureCollection",
+		features: drawnLines,
+	};
+
 	// Build proper GeoJSON for user location
 	const userLocationGeoJSON = userLocation
 		? {
@@ -369,6 +394,40 @@ function App() {
 			setSearchLoading(false);
 		}
 	};
+
+	// Handle draw line mode
+	const handleDrawLineTool = useCallback(() => {
+		setDrawMode(!drawMode);
+		if (drawMode) {
+			// Reset draw mode
+			setDrawnPoints([]);
+			setDrawnLines([]);
+		}
+		setShowToolsMenu(false);
+	}, [drawMode]);
+
+	// Handle map click for draw mode
+	const handleDrawClick = useCallback((event) => {
+		if (!drawMode) return;
+
+		const { lngLat } = event;
+		const newPoint = [lngLat.lng, lngLat.lat];
+
+		setDrawnPoints((prev) => [...prev, newPoint]);
+
+		if (drawnPoints.length > 0) {
+			const lastPoint = drawnPoints[drawnPoints.length - 1];
+			const newLine = {
+				type: "Feature",
+				geometry: {
+					type: "LineString",
+					coordinates: [lastPoint, newPoint],
+				},
+				properties: {},
+			};
+			setDrawnLines((prev) => [...prev, newLine]);
+		}
+	}, [drawMode, drawnPoints]);
 
 	// Map onMove handler for zoom-gated parcel loading
 	const handleMapMove = useCallback((evt) => {
@@ -418,12 +477,12 @@ function App() {
 			<Map
 				{...viewState}
 				onMove={handleMapMove}
-				onClick={handleMapClick}
+				onClick={(e) => (drawMode ? handleDrawClick(e) : handleMapClick(e))}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
 				minZoom={4}
 				maxZoom={20}
-				cursor="crosshair">
+				cursor={drawMode ? "crosshair" : "pointer"}>
 				{/* All Visible Parcels */}
 				{visibleParcels && visibleParcels.features && visibleParcels.features.length > 0 && (
 					<Source id="visible-parcels" type="geojson" data={visibleParcels}>
@@ -521,6 +580,38 @@ function App() {
 								"line-width": 8,
 								"line-opacity": 0.3,
 								"line-blur": 4,
+							}}
+						/>
+					</Source>
+				)}
+
+				{/* Drawn Lines */}
+				{drawnLines.length > 0 && (
+					<Source id="drawn-lines" type="geojson" data={drawnLinesGeoJSON}>
+						<Layer
+							id="drawn-lines-layer"
+							type="line"
+							paint={{
+								"line-color": "#FF6B35",
+								"line-width": 3,
+								"line-opacity": 0.8,
+							}}
+						/>
+					</Source>
+				)}
+
+				{/* Drawn Points */}
+				{drawnPoints.length > 0 && (
+					<Source id="drawn-points" type="geojson" data={drawnPointsGeoJSON}>
+						<Layer
+							id="drawn-points-layer"
+							type="circle"
+							paint={{
+								"circle-radius": 6,
+								"circle-color": "#FF6B35",
+								"circle-stroke-color": "#FFFFFF",
+								"circle-stroke-width": 2,
+								"circle-opacity": 1,
 							}}
 						/>
 					</Source>
@@ -673,6 +764,64 @@ function App() {
 				selectedParcel={selectedParcel}
 				userLocation={userLocation}
 			/>
+
+		{/* Bottom Navigation */}
+		<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 z-10 px-4 py-3">
+			<div className="flex gap-4 justify-center items-center">
+				{/* Debug Button */}
+				<button
+					onClick={() => setActiveNav(activeNav === "debug" ? null : "debug")}
+					className={`px-4 py-2 rounded-lg font-semibold transition ${
+						activeNav === "debug"
+							? "bg-neon-green text-black"
+							: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
+					}`}>
+					debug
+				</button>
+
+				{/* Tools Button */}
+				<button
+					onClick={() => {
+						setShowToolsMenu(!showToolsMenu);
+						setActiveNav("tools");
+					}}
+					className={`px-4 py-2 rounded-lg font-semibold transition ${
+						activeNav === "tools"
+							? "bg-neon-green text-black"
+							: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
+					}`}>
+					tools {showToolsMenu && "▲"}
+				</button>
+
+				{/* Admin Button */}
+				<button
+					onClick={() => setActiveNav(activeNav === "admin" ? null : "admin")}
+					className={`px-4 py-2 rounded-lg font-semibold transition ${
+						activeNav === "admin"
+							? "bg-neon-green text-black"
+							: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
+					}`}>
+					admin
+				</button>
+			</div>
+
+			{/* Tools Menu (Secondary Nav) */}
+			{showToolsMenu && (
+				<div className="mt-3 p-3 bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md">
+					<div className="flex gap-2 flex-wrap justify-center">
+						<button
+							onClick={handleDrawLineTool}
+							className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+								drawMode
+									? "bg-orange-500 text-black"
+									: "bg-black/50 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
+							}`}>
+							{drawMode ? "✓ Draw Line" : "Draw Line"}
+						</button>
+					</div>
+				</div>
+			)}
+		</div>
 		</div>
 	);
 }
