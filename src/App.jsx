@@ -335,8 +335,8 @@ function App() {
 						setFollowUserLocation(false);
 					}
 
-					// Use tile-based system if available and zoomed in
-					if (tilesManifest && evt.viewState.zoom >= 10) {
+					// Use tile-based system if available and zoomed in enough (zoom 14+)
+					if (tilesManifest && evt.viewState.zoom >= 14) {
 						const map = evt.target;
 						const bounds = map.getBounds();
 						const viewportBounds = {
@@ -359,9 +359,9 @@ function App() {
 							setVisibleParcels(null);
 						}
 					} else {
-						// Below zoom 10 or no tiles available - hide parcels
-						if (evt.viewState.zoom < 10) {
-							console.log(`◀ Zoom ${evt.viewState.zoom.toFixed(1)} < 10 - parcels hidden`);
+						// Below zoom 14 or no tiles available - hide parcels
+						if (evt.viewState.zoom < 14) {
+							console.log(`◀ Zoom ${evt.viewState.zoom.toFixed(1)} < 14 - parcels hidden`);
 						} else if (!tilesManifest) {
 							console.log("📦 Tile manifest not ready yet");
 						}

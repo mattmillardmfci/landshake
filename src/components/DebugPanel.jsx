@@ -6,7 +6,15 @@
 import React, { useState, useEffect } from "react";
 import { getErrors, clearErrors } from "../services/errorTracker";
 
-export default function DebugPanel({ viewState, selectedParcel, userLocation, isLoading, localParcels, visibleParcels, loadingParcels }) {
+export default function DebugPanel({
+	viewState,
+	selectedParcel,
+	userLocation,
+	isLoading,
+	localParcels,
+	visibleParcels,
+	loadingParcels,
+}) {
 	const [fps, setFps] = useState(60);
 	const [frameCount, setFrameCount] = useState(0);
 	const [lastTime, setLastTime] = useState(Date.now());
@@ -108,7 +116,12 @@ export default function DebugPanel({ viewState, selectedParcel, userLocation, is
 					{/* Selected Parcel */}
 					<div className="text-gray-300 mb-2 border-t border-gray-600 pt-2">
 						<div>Map Interaction:</div>
-						<div>Selected: <span className={selectedParcel ? "text-green-400" : "text-gray-500"}>{selectedParcel ? "YES" : "NONE"}</span></div>
+						<div>
+							Selected:{" "}
+							<span className={selectedParcel ? "text-green-400" : "text-gray-500"}>
+								{selectedParcel ? "YES" : "NONE"}
+							</span>
+						</div>
 					</div>
 
 					{/* User Location */}
