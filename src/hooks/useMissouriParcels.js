@@ -25,7 +25,7 @@ const useMissouriParcels = () => {
 
 			localParcelLoadAttempted.current = true;
 			setLoadingParcels(true);
-			console.log("Starting to load Cole County parcels from /data/cole_parcels.geojson...");
+			console.log("🚀 STARTING PARCEL LOAD (NEW CODE) - Loading from /data/cole_parcels.geojson...");
 
 			try {
 				const controller = new AbortController();
@@ -53,7 +53,7 @@ const useMissouriParcels = () => {
 				console.log("✅ Successfully loaded Cole County parcels:", data.features?.length ?? 0);
 			} catch (error) {
 				if (error.name === "AbortError") {
-					console.error("❌ Parcel data fetch timed out after 30 seconds");
+					console.error("❌ FETCH ABORTED - Parcel data fetch timed out after 30 seconds");
 				} else {
 					console.error("❌ Failed to load local parcel data:", error);
 				}

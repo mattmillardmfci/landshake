@@ -57,9 +57,17 @@ window.fetch = function (...args) {
 
 		return response;
 	}).catch((error) => {
-		addError(error, {
+		// Log error with clear message
+		const errorMessage = error.name === 'AbortError' 
+			? "⚠️ FETCH ABORTED" 
+			: error.message || String(error);
+			
+		addError({
+			message: errorMessage,
+			name: error.name,
+		}, {
 			url: String(resource),
-			type: "Network Error",
+			type: error.name === 'AbortError' ? "Fetch Aborted" : "Network Error",
 		});
 		throw error;
 	});
