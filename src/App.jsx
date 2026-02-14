@@ -763,7 +763,12 @@ function App() {
 			<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />
 
 			{/* Bottom Navigation */}
-			<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 z-10 px-4 py-3">
+			<div 
+				className="absolute left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 z-10 px-4 py-3"
+				style={{
+					bottom: 'max(0px, env(safe-area-inset-bottom, 0px))',
+				}}
+			>
 				<div className="flex gap-4 justify-center items-center">
 					{/* Debug Button */}
 					<button
