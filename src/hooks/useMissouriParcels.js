@@ -193,6 +193,7 @@ const useMissouriParcels = () => {
 		mapRef,
 		isLoading,
 		loadingParcels,
+		localParcels,
 	};
 };
 

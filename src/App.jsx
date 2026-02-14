@@ -31,7 +31,6 @@ function App() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchLoading, setSearchLoading] = useState(false);
 	const [showSplash, setShowSplash] = useState(true);
-	const [fakeParcels, setFakeParcels] = useState(null);
 	const [followUserLocation, setFollowUserLocation] = useState(true);
 	const hasCenteredOnUser = useRef(false);
 	const hasLoggedGeolocation = useRef(false);
@@ -39,97 +38,10 @@ function App() {
 	const lastRawLocation = useRef(null);
 	const smoothedDisplayLocation = useRef(null);
 
-	const { parcels, selectedParcelData, handleMapClick, loadParcelsForBounds, isLoading, loadingParcels } =
+	const { parcels, selectedParcelData, handleMapClick, loadParcelsForBounds, isLoading, loadingParcels, localParcels } =
 		useMissouriParcels();
 
-	// Generate fake parcels around a center point (no overlapping)
-	const generateFakeParcels = (centerLat, centerLng, count = 100) => {
-		const features = [];
-		const acreOptions = [0.5, 1, 2, 100];
-		const usedBounds = []; // Track used parcel boundaries to prevent overlaps
-
-		// Conversion factors: roughly 1 acre = 0.0015625 square miles
-		// At Missouri latitude (~38°), 1 degree lat ≈ 69 miles, 1 degree lng ≈ 54 miles
-		const acreToDegreesLat = (acres) => Math.sqrt(acres * 0.0015625) / 69;
-		const acreToDegreesLng = (acres) => Math.sqrt(acres * 0.0015625) / 54;
-
-		// Check if parcel bounds overlap with existing parcels
-		const boundsOverlap = (minLng, maxLng, minLat, maxLat) => {
-			return usedBounds.some((bound) => {
-				return !(maxLng < bound.minLng || minLng > bound.maxLng || maxLat < bound.minLat || minLat > bound.maxLat);
-			});
-		};
-
-		let created = 0;
-		let attempts = 0;
-		const maxAttempts = count * 3; // Allow multiple attempts to place parcels
-
-		while (created < count && attempts < maxAttempts) {
-			attempts++;
-
-			const acres = acreOptions[Math.floor(Math.random() * acreOptions.length)];
-			const latOffset = (Math.random() - 0.5) * 0.05; // Spread within ~1.5 miles
-			const lngOffset = (Math.random() - 0.5) * 0.05;
-
-			const parcelLat = centerLat + latOffset;
-			const parcelLng = centerLng + lngOffset;
-
-			const latDelta = acreToDegreesLat(acres) / 2;
-			const lngDelta = acreToDegreesLng(acres) / 2;
-
-			const minLng = parcelLng - lngDelta;
-			const maxLng = parcelLng + lngDelta;
-			const minLat = parcelLat - latDelta;
-			const maxLat = parcelLat + latDelta;
-
-			// Skip if this parcel would overlap with existing parcels
-			if (boundsOverlap(minLng, maxLng, minLat, maxLat)) {
-				continue;
-			}
-
-			// Track this parcel's bounds
-			usedBounds.push({ minLng, maxLng, minLat, maxLat });
-
-			// Create rectangular parcel
-			const coordinates = [
-				[
-					[minLng, minLat],
-					[maxLng, minLat],
-					[maxLng, maxLat],
-					[minLng, maxLat],
-					[minLng, minLat],
-				],
-			];
-
-			features.push({
-				type: "Feature",
-				geometry: {
-					type: "Polygon",
-					coordinates: coordinates,
-				},
-				properties: {
-					PARCEL_ID: `FAKE-${created + 1}`,
-					OWNER: `Property Owner ${created + 1}`,
-					ACRES_CALC: acres,
-					ADDRESS: `${Math.floor(Math.random() * 9999)} County Road ${Math.floor(Math.random() * 999)}`,
-					ownerInfoLocked: true, // Future premium feature: Unlock Owner Information
-				},
-			});
-
-			created++;
-		}
-
-		return {
-			type: "FeatureCollection",
-			features: features,
-		};
-	};
-
-	// Generate initial fake parcels on mount
-	useEffect(() => {
-		const initialParcels = generateFakeParcels(MISSOURI_CENTER.latitude, MISSOURI_CENTER.longitude, 100);
-		setFakeParcels(initialParcels);
-	}, []);
+	const [visibleParcels, setVisibleParcels] = useState(null);
 
 	// Splash screen timer
 	useEffect(() => {
@@ -235,12 +147,6 @@ function App() {
 
 				if (inMissouriBounds) {
 					if (!hasCenteredOnUser.current) {
-						const newParcels = generateFakeParcels(
-							smoothedDisplayLocation.current?.latitude ?? latitude,
-							smoothedDisplayLocation.current?.longitude ?? longitude,
-							100,
-						);
-						setFakeParcels(newParcels);
 						hasCenteredOnUser.current = true;
 					}
 
@@ -302,27 +208,6 @@ function App() {
 	const onMapClick = async (event) => {
 		console.log("App: Map clicked at:", event.lngLat);
 
-		// Check if click is on a fake parcel
-		if (fakeParcels && fakeParcels.features) {
-			const clickPoint = [event.lngLat.lng, event.lngLat.lat];
-
-			for (const feature of fakeParcels.features) {
-				// Simple point-in-polygon check (for rectangular parcels)
-				const coords = feature.geometry.coordinates[0];
-				const minLng = Math.min(...coords.map((c) => c[0]));
-				const maxLng = Math.max(...coords.map((c) => c[0]));
-				const minLat = Math.min(...coords.map((c) => c[1]));
-				const maxLat = Math.max(...coords.map((c) => c[1]));
-
-				if (clickPoint[0] >= minLng && clickPoint[0] <= maxLng && clickPoint[1] >= minLat && clickPoint[1] <= maxLat) {
-					console.log("Clicked on fake parcel:", feature);
-					setSelectedParcel(feature);
-					return;
-				}
-			}
-		}
-
-		// Otherwise try real parcel data
 		const parcel = await handleMapClick(event);
 		console.log("App: Received parcel from handleMapClick:", parcel);
 		setSelectedParcel(parcel);
@@ -352,10 +237,6 @@ function App() {
 			};
 			setViewState(newViewState);
 			console.log("Zoomed to address:", result);
-
-			// Generate new fake parcels around search location
-			const newParcels = generateFakeParcels(result.latitude, result.longitude, 100);
-			setFakeParcels(newParcels);
 
 			// Query the parcel at this location
 			const fakeEvent = {
@@ -399,6 +280,29 @@ function App() {
 						isUserPanning.current = true;
 						setFollowUserLocation(false);
 					}
+
+					// Update visible parcels based on viewport when zoomed in
+					if (evt.viewState.zoom >= 15 && localParcels?.features) {
+						const map = evt.target;
+						const bounds = map.getBounds();
+						const filtered = localParcels.features.filter((feature) => {
+							const bbox = feature.properties?.__bbox;
+							if (!bbox) return false;
+							return !(
+								bbox[2] < bounds.getWest() ||
+								bbox[0] > bounds.getEast() ||
+								bbox[3] < bounds.getSouth() ||
+								bbox[1] > bounds.getNorth()
+							);
+						});
+
+						setVisibleParcels({
+							type: "FeatureCollection",
+							features: filtered,
+						});
+					} else {
+						setVisibleParcels(null);
+					}
 				}}
 				onClick={onMapClick}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
@@ -407,11 +311,11 @@ function App() {
 				minZoom={6}
 				maxZoom={18}
 				cursor="crosshair">
-				{/* Fake Parcels */}
-				{fakeParcels && fakeParcels.features && fakeParcels.features.length > 0 && (
-					<Source id="fake-parcels" type="geojson" data={fakeParcels}>
+				{/* All Visible Parcels */}
+				{visibleParcels && visibleParcels.features && visibleParcels.features.length > 0 && (
+					<Source id="visible-parcels" type="geojson" data={visibleParcels}>
 						<Layer
-							id="fake-parcels-fill"
+							id="visible-parcels-fill"
 							type="fill"
 							paint={{
 								"fill-color": "#39FF14",
@@ -419,12 +323,12 @@ function App() {
 							}}
 						/>
 						<Layer
-							id="fake-parcels-line"
+							id="visible-parcels-line"
 							type="line"
 							paint={{
 								"line-color": "#39FF14",
-								"line-width": 2,
-								"line-opacity": 0.6,
+								"line-width": 1,
+								"line-opacity": 0.4,
 							}}
 						/>
 					</Source>
@@ -476,11 +380,11 @@ function App() {
 					</Source>
 				)}
 
-				{/* Real Parcels (if any) */}
+				{/* Selected Parcel Highlight */}
 				{parcels && parcels.features && parcels.features.length > 0 && (
-					<Source id="parcels" type="geojson" data={parcels}>
+					<Source id="selected-parcel" type="geojson" data={parcels}>
 						<Layer
-							id="parcels-fill"
+							id="selected-parcel-fill"
 							type="fill"
 							paint={{
 								"fill-color": "#39FF14",
@@ -488,16 +392,16 @@ function App() {
 							}}
 						/>
 						<Layer
-							id="parcels-line"
+							id="selected-parcel-line"
 							type="line"
 							paint={{
 								"line-color": "#39FF14",
-								"line-width": 4,
+								"line-width": 3,
 								"line-opacity": 1,
 							}}
 						/>
 						<Layer
-							id="parcels-line-glow"
+							id="selected-parcel-glow"
 							type="line"
 							paint={{
 								"line-color": "#39FF14",
