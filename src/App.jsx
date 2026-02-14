@@ -46,11 +46,26 @@ function App() {
 	}, []);
 
 	// Log loading state changes
+	// Track all state changes comprehensively
 	useEffect(() => {
-		console.log("📦 Parcel loading state:", loadingParcels ? "LOADING..." : "READY");
-		console.log("📊 Local parcels available:", localParcels ? `${localParcels.features?.length} features, size: ${JSON.stringify(localParcels).length / 1024 / 1024}MB` : "NOT LOADED");
-		console.log("👀 Visible parcels on map:", visibleParcels?.features?.length ?? 0);
-	}, [loadingParcels, localParcels, visibleParcels]);
+		console.group("📊 PARCEL STATE SNAPSHOT");
+		console.log("loadingParcels:", loadingParcels);
+		console.log("localParcels:", localParcels ? `${localParcels.features?.length} features` : "null");
+		console.log("visibleParcels:", visibleParcels ? `${visibleParcels.features?.length} features` : "null");
+		
+		const renderCondition = visibleParcels && visibleParcels.features && visibleParcels.features.length > 0;
+		console.log("✔️ RENDER CONDITION (visibleParcels && visibleParcels.features && visibleParcels.features.length > 0):", renderCondition);
+		
+		if (renderCondition) {
+			console.log("🎨 WILL RENDER: Visible parcels layer is visible");
+		} else {
+			console.log("❌ WILL NOT RENDER: Check conditions above");
+			if (!visibleParcels) console.log("  - visibleParcels is null/undefined");
+			if (visibleParcels && !visibleParcels.features) console.log("  - visibleParcels.features is null/undefined");
+			if (visibleParcels?.features?.length === 0) console.log("  - visibleParcels.features.length is 0");
+		}
+		console.groupEnd();
+	}, [visibleParcels]);
 
 	// Track visitor on initial load
 	useEffect(() => {
@@ -67,11 +82,19 @@ function App() {
 			return;
 		}
 
-		console.log(`✅ ${localParcels.features.length} parcels loaded, displaying them`);
+		console.log(`✅ DISPATCHER: ${localParcels.features.length} parcels loaded, displaying them`);
+		console.log("📋 Parcel data structure:", {
+			type: localParcels.type,
+			featureCount: localParcels.features.length,
+			firstFeature: localParcels.features[0],
+		});
+
 		setVisibleParcels({
 			type: "FeatureCollection",
 			features: localParcels.features,
 		});
+
+		console.log("🎨 SET VISIBLE PARCELS - should show on map now");
 	}, [localParcels]);
 
 	// Handle admin panel location clicks
@@ -585,6 +608,20 @@ function App() {
 					onClose={() => setSelectedParcel(null)}
 				/>
 			)}
+
+			{/* Mobile Debug Display */}
+			<div className="absolute top-4 left-4 z-50 bg-black bg-opacity-90 text-white text-xs p-3 rounded-lg max-w-xs font-mono">
+				<div className="font-bold mb-2">DEBUG INFO</div>
+				<div>Loading: {loadingParcels ? "🔄" : "✅"}</div>
+				<div>Local: {localParcels?.features?.length ?? 0} features</div>
+				<div>Visible: {visibleParcels?.features?.length ?? 0} features</div>
+				<div>Render: {visibleParcels?.features?.length > 0 ? "🎨 YES" : "❌ NO"}</div>
+				<div className="mt-2 border-t border-gray-500 pt-2">
+					<div>Zoom: {viewState.zoom.toFixed(1)}</div>
+					<div>Lat: {viewState.latitude.toFixed(2)}</div>
+					<div>Lon: {viewState.longitude.toFixed(2)}</div>
+				</div>
+			</div>
 
 			{/* Admin Panel */}
 			<AdminPanel onLocationClick={handleAdminLocationClick} />

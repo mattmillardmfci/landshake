@@ -53,12 +53,23 @@ const useMissouriParcels = () => {
 				const mbSize = (JSON.stringify(data).length / 1024 / 1024).toFixed(2);
 				console.log("✨ JSON parsed successfully,", data.features?.length ?? 0, "features,", mbSize, "MB");
 
+				if (data.features?.length > 0) {
+					console.log("🔍 FIRST FEATURE:", JSON.stringify(data.features[0], null, 2).substring(0, 500));
+					console.log("🗺️ SAMPLE COORDINATES:", data.features[0]?.geometry?.coordinates);
+				}
+
 				if (!data || data.type !== "FeatureCollection") {
 					throw new Error("Parcel dataset is not a FeatureCollection.");
 				}
 
 				setLocalParcels(data);
-				console.log("✅ Successfully loaded Cole County parcels:", data.features?.length ?? 0, "parcels");
+				console.log("✅ Successfully set localParcels in state:", data.features?.length ?? 0, "parcels");
+				console.log("🎯 DATA STRUCTURE CHECK:");
+				console.log("  - Type:", typeof data);
+				console.log("  - Has features array:", Array.isArray(data.features));
+				console.log("  - Feature count:", data.features?.length);
+				console.log("  - First feature type:", data.features?.[0]?.type);
+				console.log("  - First geometry type:", data.features?.[0]?.geometry?.type);
 			} catch (error) {
 				if (error.name === "AbortError") {
 					console.error("⚠️ FETCH ABORTED");
