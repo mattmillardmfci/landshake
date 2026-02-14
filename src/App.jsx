@@ -306,13 +306,6 @@ function App() {
 					hasLoggedGeolocation.current = true;
 				}
 
-				const inParcelBounds = longitude >= -92.496 && longitude <= -92.001 && latitude >= 38.324 && latitude <= 38.737;
-
-				// Show warning if outside parcel area
-				if (!inParcelBounds) {
-					console.warn("User location outside parcel service area");
-					setLocationError("You are outside the parcel data area");
-				}
 			},
 			(error) => {
 				console.warn("Geolocation error:", error);
