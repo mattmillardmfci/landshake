@@ -35,7 +35,7 @@ export const clearErrors = () => {
 const originalFetch = window.fetch;
 window.fetch = function (...args) {
 	const [resource, config] = args;
-	console.log("🔗 FETCH REQUEST:\n  URL:\", String(resource), "\n  Config:\", config);
+	console.log("🔗 FETCH REQUEST:\n  URL:", String(resource), "\n  Config:", config);
 	
 	const startTime = Date.now();
 
