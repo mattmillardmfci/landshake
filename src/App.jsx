@@ -755,7 +755,7 @@ function App() {
 					},
 					properties: {
 						color: "#3B82F6",
-						icon: "📍", // Default pin icon
+						iconType: "trail-camera", // Default icon type
 						label: "Pin",
 					},
 				};
@@ -808,6 +808,32 @@ function App() {
 				onMouseMove={handleMapMouseMove}
 				onMouseUp={handleMapMouseUp}
 				onMouseLeave={handleMapMouseUp}
+				onLoad={(e) => {
+					// Register SVG icons for pins
+					const map = e.target;
+					const iconTypes = ["trail-camera", "buck", "turkey", "deer-stand"];
+					
+					iconTypes.forEach((iconType) => {
+						// Skip if already loaded
+						if (map.hasImage(iconType)) return;
+						
+						// Load and register each SVG
+						const img = new Image();
+						img.src = `/icons/${iconType}.svg`;
+						img.onload = () => {
+							// Convert to canvas for proper Mapbox handling
+							const canvas = document.createElement("canvas");
+							canvas.width = img.width || 48;
+							canvas.height = img.height || 48;
+							const ctx = canvas.getContext("2d");
+							ctx.drawImage(img, 0, 0);
+							
+							if (!map.hasImage(iconType)) {
+								map.addImage(iconType, canvas, { sdf: true });
+							}
+						};
+					});
+				}}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
 				minZoom={4}
@@ -1024,13 +1050,17 @@ function App() {
 						}}>
 						<Layer
 							id="pins-layer"
-							type="circle"
+							type="symbol"
+							layout={{
+								"icon-image": ["get", "iconType"],
+								"icon-size": 1.2,
+								"icon-allow-overlap": true,
+							}}
 							paint={{
-								"circle-radius": 10,
-								"circle-color": ["get", "color"],
-								"circle-stroke-color": "#FFFFFF",
-								"circle-stroke-width": 2,
-								"circle-opacity": 0.8,
+								"icon-opacity": 1,
+								"icon-color": ["get", "color"],
+								"icon-halo-color": "#FFFFFF",
+								"icon-halo-width": 1,
 							}}
 						/>
 					</Source>
@@ -1350,33 +1380,33 @@ function App() {
 									/>
 								</div>
 
-								{/* Icon Selection */}
+								{/* Icon Type Selection */}
 								<div className="flex flex-wrap gap-2 justify-center">
-									<p className="text-xs text-gray-400 w-full text-center">Icon:</p>
+									<p className="text-xs text-gray-400 w-full text-center">Icon Type:</p>
 									<button
-										onClick={() => updatePinProperty(selectedPinId, "icon", "📍")}
-										className={`px-3 py-1 rounded-lg text-lg transition ${
-											selectedPin.properties.icon === "📍"
+										onClick={() => updatePinProperty(selectedPinId, "iconType", "trail-camera")}
+										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
+											selectedPin.properties.iconType === "trail-camera"
 												? "bg-blue-500 text-black"
 												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
 										}`}
-										title="Pin">
-										📍
+										title="Trail Camera">
+										🎥
 									</button>
 									<button
-										onClick={() => updatePinProperty(selectedPinId, "icon", "🦌")}
-										className={`px-3 py-1 rounded-lg text-lg transition ${
-											selectedPin.properties.icon === "🦌"
+										onClick={() => updatePinProperty(selectedPinId, "iconType", "buck")}
+										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
+											selectedPin.properties.iconType === "buck"
 												? "bg-blue-500 text-black"
 												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
 										}`}
-										title="Deer">
+										title="Buck">
 										🦌
 									</button>
 									<button
-										onClick={() => updatePinProperty(selectedPinId, "icon", "🦃")}
-										className={`px-3 py-1 rounded-lg text-lg transition ${
-											selectedPin.properties.icon === "🦃"
+										onClick={() => updatePinProperty(selectedPinId, "iconType", "turkey")}
+										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
+											selectedPin.properties.iconType === "turkey"
 												? "bg-blue-500 text-black"
 												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
 										}`}
@@ -1384,24 +1414,14 @@ function App() {
 										🦃
 									</button>
 									<button
-										onClick={() => updatePinProperty(selectedPinId, "icon", "⛺")}
-										className={`px-3 py-1 rounded-lg text-lg transition ${
-											selectedPin.properties.icon === "⛺"
+										onClick={() => updatePinProperty(selectedPinId, "iconType", "deer-stand")}
+										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
+											selectedPin.properties.iconType === "deer-stand"
 												? "bg-blue-500 text-black"
 												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
 										}`}
 										title="Deer Stand">
-										⛺
-									</button>
-									<button
-										onClick={() => updatePinProperty(selectedPinId, "icon", "🏚️")}
-										className={`px-3 py-1 rounded-lg text-lg transition ${
-											selectedPin.properties.icon === "🏚️"
-												? "bg-blue-500 text-black"
-												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
-										}`}
-										title="Deer Blind">
-										🏚️
+										🏗️
 									</button>
 								</div>
 

@@ -1,0 +1,26 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main platform -->
+  <rect x="18" y="24" width="28" height="6" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <!-- Platform edge detail -->
+  <line x1="20" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="1"/>
+  <!-- Left support post -->
+  <rect x="22" y="28" width="2" height="26" fill="currentColor"/>
+  <!-- Right support post -->
+  <rect x="40" y="28" width="2" height="26" fill="currentColor"/>
+  <!-- Left diagonal brace -->
+  <line x1="24" y1="32" x2="18" y2="50" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Right diagonal brace -->
+  <line x1="40" y1="32" x2="46" y2="50" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Ladder rung 1 -->
+  <line x1="30" y1="40" x2="34" y2="40" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Ladder rung 2 -->
+  <line x1="30" y1="48" x2="34" y2="48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Ladder rung 3 -->
+  <line x1="30" y1="56" x2="34" y2="56" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Roof peak left -->
+  <line x1="18" y1="24" x2="22" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Roof peak right -->
+  <line x1="46" y1="24" x2="42" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Roof -->
+  <line x1="22" y1="14" x2="42" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>

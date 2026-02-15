@@ -1,0 +1,22 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Head -->
+  <circle cx="32" cy="36" r="12" fill="currentColor"/>
+  <!-- Left antler main -->
+  <line x1="26" y1="26" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Left antler branches -->
+  <line x1="22" y1="18" x2="16" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="20" y1="14" x2="14" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Right antler main -->
+  <line x1="38" y1="26" x2="44" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <!-- Right antler branches -->
+  <line x1="42" y1="18" x2="48" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="44" y1="14" x2="50" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Ears -->
+  <ellipse cx="24" cy="28" rx="3" ry="6" fill="currentColor"/>
+  <ellipse cx="40" cy="28" rx="3" ry="6" fill="currentColor"/>
+  <!-- Snout -->
+  <ellipse cx="32" cy="42" rx="6" ry="4" fill="currentColor" opacity="0.6"/>
+  <!-- Eyes -->
+  <circle cx="28" cy="34" r="2" fill="white"/>
+  <circle cx="36" cy="34" r="2" fill="white"/>
+</svg>
