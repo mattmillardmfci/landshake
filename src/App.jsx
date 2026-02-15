@@ -1214,10 +1214,11 @@ function App() {
 				className="fixed left-0 right-0 z-40 px-4 py-3 space-y-2"
 				style={{
 					bottom: "max(0px, env(safe-area-inset-bottom, 0px))",
+					pointerEvents: "none",
 				}}>
 				{/* Tools Menu (Secondary Nav) - Appears First */}
 				{showToolsMenu && (
-					<div className="bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md p-3">
+					<div className="bg-black/70 border border-neon-green/30 rounded-lg backdrop-blur-md p-3" style={{ pointerEvents: "auto" }}>
 						<div className="flex gap-2 flex-wrap justify-center">
 							<button
 								onClick={handleDrawLineTool}
@@ -1234,7 +1235,7 @@ function App() {
 
 				{/* Area Editing Menu - Appears if Area Selected */}
 				{selectedArea && (
-					<div className="bg-black/70 border border-amber-500/30 rounded-lg backdrop-blur-md p-3">
+					<div className="bg-black/70 border border-amber-500/30 rounded-lg backdrop-blur-md p-3" style={{ pointerEvents: "auto" }}>
 						<div className="space-y-2">
 							<p className="text-xs text-amber-400 text-center font-semibold">Area Editor</p>
 							
@@ -1306,7 +1307,7 @@ function App() {
 					</div>
 				)}
 
-				<div className="border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
+				<div className="border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3" style={{ pointerEvents: "auto" }}>
 					{/* Debug Button */}
 					<button
 						onClick={() => setShowDebugPanel(!showDebugPanel)}
