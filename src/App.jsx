@@ -1024,15 +1024,13 @@ function App() {
 						}}>
 						<Layer
 							id="pins-layer"
-							type="symbol"
-							layout={{
-								"text-field": ["get", "icon"],
-								"text-size": 32,
-								"text-offset": [0, 0],
-								"text-allow-overlap": true,
-							}}
+							type="circle"
 							paint={{
-								"text-opacity": 1,
+								"circle-radius": 10,
+								"circle-color": ["get", "color"],
+								"circle-stroke-color": "#FFFFFF",
+								"circle-stroke-width": 2,
+								"circle-opacity": 0.8,
 							}}
 						/>
 					</Source>
