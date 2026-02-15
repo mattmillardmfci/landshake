@@ -72,12 +72,7 @@ function App() {
 	const [selectedAreaId, setSelectedAreaId] = useState(null);
 	const areaIdRef = useRef(0); // Counter for unique area IDs
 
-	// Pins management
-	const [pins, setPins] = useState([]);
-	const [selectedPinId, setSelectedPinId] = useState(null);
-	const [pinMode, setPinMode] = useState(false);
-	const [draggingPinId, setDraggingPinId] = useState(null);
-	const pinIdRef = useRef(0); // Counter for unique pin IDs
+	// Drawing management
 
 	// Splash screen timer
 	useEffect(() => {
@@ -425,6 +420,24 @@ function App() {
 		features: drawnLines,
 	};
 
+	// Create GeoJSON for area acreage labels (points at centroids)
+	const areaLabelsGeoJSON = {
+		type: "FeatureCollection",
+		features: cachedAreas
+			.filter((area) => area.properties.centroid)
+			.map((area) => ({
+				type: "Feature",
+				id: area.id,
+				geometry: {
+					type: "Point",
+					coordinates: area.properties.centroid,
+				},
+				properties: {
+					acres: area.properties.acres,
+				},
+			})),
+	};
+
 	// Generate heading cone/sector geometry
 	const getHeadingConeGeoJSON = () => {
 		if (!userLocation || deviceHeading === null) return null;
@@ -518,20 +531,8 @@ function App() {
 			setDrawnLines([]);
 			setSelectedAreaId(null);
 		}
-		setPinMode(false);
 		setShowToolsMenu(false);
 	}, [drawMode]);
-
-	// Handle drop pin mode
-	const handleDropPinTool = useCallback(() => {
-		setPinMode(!pinMode);
-		if (pinMode) {
-			// Reset pin mode
-			setSelectedPinId(null);
-		}
-		setDrawMode(false);
-		setShowToolsMenu(false);
-	}, [pinMode]);
 
 	// Distance helper function
 	const getDistance = (point1, point2) => {
@@ -545,6 +546,57 @@ function App() {
 		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
 		return R * c;
+	};
+
+	// Calculate polygon area in acres using geodetic formula
+	const calculatePolygonArea = (coordinates) => {
+		// coordinates is an array of [lng, lat] pairs
+		if (!coordinates || coordinates.length < 3) return 0;
+
+		// Calculate using Shoelace formula with latitude-based correction
+		// This accounts for the Earth's curvature at the polygon's average latitude
+
+		// Calculate average latitude for scaling factor
+		const avgLat = coordinates.reduce((sum, coord) => sum + coord[1], 0) / coordinates.length;
+		const latRad = (avgLat * Math.PI) / 180;
+
+		// Conversion factors: 1 degree at the equator
+		const metersPerDegreeLat = 111320; // constant
+		const metersPerDegreeLng = 111320 * Math.cos(latRad); // varies by latitude
+
+		// Convert to planar coordinates (meters)
+		const planarCoords = coordinates.map((coord) => [
+			coord[0] * metersPerDegreeLng,
+			coord[1] * metersPerDegreeLat,
+		]);
+
+		// Apply Shoelace formula
+		let area = 0;
+		for (let i = 0; i < planarCoords.length - 1; i++) {
+			area += (planarCoords[i][0] * planarCoords[i + 1][1] - planarCoords[i + 1][0] * planarCoords[i][1]) / 2;
+		}
+
+		area = Math.abs(area);
+
+		// Convert square meters to acres (1 acre = 4046.86 square meters)
+		const acres = area / 4046.86;
+
+		return acres;
+	};
+
+	// Calculate centroid of polygon for label placement
+	const calculateCentroid = (coordinates) => {
+		if (!coordinates || coordinates.length === 0) return null;
+
+		let sumLng = 0;
+		let sumLat = 0;
+
+		for (let i = 0; i < coordinates.length - 1; i++) {
+			sumLng += coordinates[i][0];
+			sumLat += coordinates[i][1];
+		}
+
+		return [(sumLng / (coordinates.length - 1)), (sumLat / (coordinates.length - 1))];
 	};
 
 	// Handle map click for draw mode
@@ -564,6 +616,11 @@ function App() {
 				if (distance < 50) {
 					// Create polygon feature
 					const polygonCoords = [...drawnPoints, startPoint]; // Close the ring
+					
+					// Calculate area and centroid
+					const acres = calculatePolygonArea(polygonCoords);
+					const centroid = calculateCentroid(polygonCoords);
+
 					const areaFeature = {
 						type: "Feature",
 						id: areaIdRef.current++,
@@ -577,6 +634,8 @@ function App() {
 							fillOpacity: 0,
 							lineOpacity: 1,
 							lineWidth: 1,
+							acres: acres.toFixed(2),
+							centroid: centroid,
 						},
 					};
 
@@ -614,39 +673,10 @@ function App() {
 		[drawMode, drawnPoints],
 	);
 
-	// Handle pin dragging
-	const handleMapMouseDown = useCallback(
-		(e) => {
-			if (!selectedPinId) return;
-
-			// Check if clicking on the selected pin
-			const features = e.target.querySourceFeatures("pins", {
-				layers: ["pins-layer"],
-			});
-
-			if (features && features.length > 0 && features[0].id === selectedPinId) {
-				setDraggingPinId(selectedPinId);
-				e.target.getCanvas().style.cursor = "grabbing";
-			}
-		},
-		[selectedPinId],
-	);
-
-	const handleMapMouseMove = useCallback(
-		(e) => {
-			if (!draggingPinId) return;
-
-			const { lngLat } = e;
-			updatePinCoordinates(draggingPinId, lngLat.lng, lngLat.lat);
-		},
-		[draggingPinId],
-	);
-
-	const handleMapMouseUp = useCallback(() => {
-		if (draggingPinId) {
-			setDraggingPinId(null);
-		}
-	}, [draggingPinId]);
+	// Map mouse event handlers
+	const handleMapMouseDown = useCallback(() => {}, []);
+	const handleMapMouseMove = useCallback(() => {}, []);
+	const handleMapMouseUp = useCallback(() => {}, []);
 
 	// Map onMove handler for zoom-gated parcel loading
 	const handleMapMove = useCallback(
@@ -712,70 +742,12 @@ function App() {
 	};
 
 	const selectedArea = cachedAreas.find((area) => area.id === selectedAreaId);
-
-	// Pin management functions
-	const updatePinProperty = (pinId, property, value) => {
-		setPins((prev) =>
-			prev.map((pin) => (pin.id === pinId ? { ...pin, properties: { ...pin.properties, [property]: value } } : pin)),
-		);
-	};
-
-	const updatePinCoordinates = (pinId, lng, lat) => {
-		setPins((prev) =>
-			prev.map((pin) => (pin.id === pinId ? { ...pin, geometry: { type: "Point", coordinates: [lng, lat] } } : pin)),
-		);
-	};
-
-	const deletePin = (pinId) => {
-		setPins((prev) => prev.filter((pin) => pin.id !== pinId));
-		if (selectedPinId === pinId) {
-			setSelectedPinId(null);
-		}
-	};
-
-	const selectedPin = pins.find((pin) => pin.id === selectedPinId);
-
 	// Handle map clicks with area selection support
 	const handleMapClickWithAreas = useCallback(
 		(e) => {
 			if (drawMode) {
 				handleDrawClick(e);
 				return;
-			}
-
-			// Handle pin placement in pin mode
-			if (pinMode) {
-				const { lngLat } = e;
-				const newPin = {
-					type: "Feature",
-					id: pinIdRef.current++,
-					geometry: {
-						type: "Point",
-						coordinates: [lngLat.lng, lngLat.lat],
-					},
-					properties: {
-						color: "#3B82F6",
-						iconType: "trail-camera", // Default icon type
-						label: "Pin",
-					},
-				};
-				setPins((prev) => [...prev, newPin]);
-				setSelectedPinId(newPin.id);
-				// Don't exit pin mode - keep it active to allow multiple pins or editing
-				return;
-			}
-
-			// Check if clicking on a pin
-			const pinFeatures = e.target.querySourceFeatures("pins", {
-				layers: ["pins-layer"],
-			});
-
-			if (pinFeatures && pinFeatures.length > 0) {
-				const clickedPin = pins.find((pin) => pin.id === pinFeatures[0].id);
-				if (clickedPin) {
-					setSelectedPinId(clickedPin.id);
-					return;
-				}
 			}
 
 			// Check if clicking on a cached area
@@ -794,7 +766,7 @@ function App() {
 			// Otherwise, handle normal parcel click
 			handleMapClick(e);
 		},
-		[drawMode, pinMode, handleDrawClick, handleMapClick, cachedAreas, pins],
+		[drawMode, handleDrawClick, handleMapClick, cachedAreas],
 	);
 
 	return (
@@ -815,7 +787,7 @@ function App() {
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
 				minZoom={4}
 				maxZoom={20}
-				cursor={draggingPinId ? "grabbing" : drawMode ? "crosshair" : "pointer"}>
+				cursor={drawMode ? "crosshair" : "pointer"}>
 				{/* All Visible Parcels */}
 				{visibleParcels && visibleParcels.features && visibleParcels.features.length > 0 && (
 					<Source id="visible-parcels" type="geojson" data={visibleParcels}>
@@ -1016,50 +988,26 @@ function App() {
 					</Source>
 				)}
 
-				{/* Pins */}
-				{pins.length > 0 && (
-					<Source
-						id="pins"
-						type="geojson"
-						data={{
-							type: "FeatureCollection",
-							features: pins,
-						}}>
+				{/* Area Acreage Labels */}
+				{areaLabelsGeoJSON.features.length > 0 && (
+					<Source id="area-labels" type="geojson" data={areaLabelsGeoJSON}>
 						<Layer
-							id="pins-layer"
-							type="circle"
-							paint={{
-								"circle-radius": ["case", ["==", ["get", "iconType"], "deer-stand"], 14, 12],
-								"circle-color": ["get", "color"],
-								"circle-stroke-color": "#FFFFFF",
-								"circle-stroke-width": 2,
-								"circle-opacity": 0.85,
-							}}
-						/>
-						{/* Icon type labels */}
-						<Layer
-							id="pins-label"
+							id="area-labels-text"
 							type="symbol"
 							layout={{
-								"text-field": [
-									"case",
-									["==", ["get", "iconType"], "trail-camera"],
-									"📷",
-									["==", ["get", "iconType"], "buck"],
-									"🦌",
-									["==", ["get", "iconType"], "turkey"],
-									"🦃",
-									["==", ["get", "iconType"], "deer-stand"],
-									"🏗",
-									"📍",
-								],
-								"text-size": 14,
+								"text-field": ["concat", ["get", "acres"], " acres"],
+								"text-size": 12,
+								"text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
 								"text-offset": [0, 0],
 								"text-allow-overlap": true,
+								"text-anchor": "center",
+								"text-justify": "center",
 							}}
 							paint={{
-								"text-opacity": 1,
-								"text-color": "#FFFFFF",
+								"text-color": "#39FF14",
+								"text-opacity": 0.95,
+								"text-halo-color": "#000000",
+								"text-halo-width": 1.5,
 							}}
 						/>
 					</Source>
@@ -1280,15 +1228,6 @@ function App() {
 								}`}>
 								{drawMode ? "✓ Draw Area" : "Draw Area"}
 							</button>
-							<button
-								onClick={handleDropPinTool}
-								className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-									pinMode
-										? "bg-blue-500 text-black"
-										: "bg-black/50 border border-blue-500/50 text-blue-400 hover:bg-blue-500/20"
-								}`}>
-								{pinMode ? "✓ Drop Pin" : "Drop Pin"}
-							</button>
 						</div>
 					</div>
 				)}
@@ -1298,6 +1237,14 @@ function App() {
 					<div className="bg-black/70 border border-amber-500/30 rounded-lg backdrop-blur-md p-3">
 						<div className="space-y-2">
 							<p className="text-xs text-amber-400 text-center font-semibold">Area Editor</p>
+							
+							{/* Area Acreage Display */}
+							<div className="bg-black/50 border border-amber-500/50 rounded px-3 py-2 text-center">
+								<div className="text-xs text-amber-300">Total Area</div>
+								<div className="text-lg font-bold text-amber-400">{selectedArea.properties.acres}</div>
+								<div className="text-xs text-amber-200">acres</div>
+							</div>
+							
 							<div className="flex gap-2 flex-wrap justify-center">
 								{/* Line Color */}
 								<div className="flex items-center gap-2">
@@ -1359,101 +1306,6 @@ function App() {
 					</div>
 				)}
 
-				{/* Pin Editing Menu - Appears if Pin Selected */}
-				{selectedPin && (
-					<div className="bg-black/70 border border-blue-500/30 rounded-lg backdrop-blur-md p-3">
-						<div className="space-y-2">
-							<p className="text-xs text-blue-400 text-center font-semibold">Pin Editor</p>
-							<div className="space-y-2">
-								{/* Pin Color */}
-								<div className="flex items-center gap-2 justify-center">
-									<label className="text-xs text-gray-400">Color:</label>
-									<input
-										type="color"
-										value={selectedPin.properties.color}
-										onChange={(e) => updatePinProperty(selectedPinId, "color", e.target.value)}
-										className="w-8 h-8 rounded cursor-pointer"
-										title="Pin Color"
-									/>
-								</div>
-
-								{/* Icon Type Selection */}
-								<div className="flex flex-wrap gap-2 justify-center">
-									<p className="text-xs text-gray-400 w-full text-center">Icon Type:</p>
-									<button
-										onClick={() => updatePinProperty(selectedPinId, "iconType", "trail-camera")}
-										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
-											selectedPin.properties.iconType === "trail-camera"
-												? "bg-blue-500 text-black"
-												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
-										}`}
-										title="Trail Camera">
-										🎥
-									</button>
-									<button
-										onClick={() => updatePinProperty(selectedPinId, "iconType", "buck")}
-										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
-											selectedPin.properties.iconType === "buck"
-												? "bg-blue-500 text-black"
-												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
-										}`}
-										title="Buck">
-										🦌
-									</button>
-									<button
-										onClick={() => updatePinProperty(selectedPinId, "iconType", "turkey")}
-										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
-											selectedPin.properties.iconType === "turkey"
-												? "bg-blue-500 text-black"
-												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
-										}`}
-										title="Turkey">
-										🦃
-									</button>
-									<button
-										onClick={() => updatePinProperty(selectedPinId, "iconType", "deer-stand")}
-										className={`px-3 py-1.5 rounded-lg text-xs transition font-semibold ${
-											selectedPin.properties.iconType === "deer-stand"
-												? "bg-blue-500 text-black"
-												: "bg-black/50 border border-blue-500/50 hover:bg-blue-500/20"
-										}`}
-										title="Deer Stand">
-										🏗️
-									</button>
-								</div>
-
-								{/* Label / Name */}
-								<div className="flex items-center gap-2 justify-center">
-									<label className="text-xs text-gray-400">Label:</label>
-									<input
-										type="text"
-										value={selectedPin.properties.label}
-										onChange={(e) => updatePinProperty(selectedPinId, "label", e.target.value)}
-										placeholder="Pin label"
-										className="px-2 py-1 text-xs rounded bg-gray-800 border border-blue-500/30 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-24"
-									/>
-								</div>
-
-								{/* Save & Delete Buttons */}
-								<div className="flex gap-2 justify-center">
-									<button
-										onClick={() => {
-											setSelectedPinId(null);
-											setPinMode(false);
-										}}
-										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-green-600/70 border border-green-500/50 text-green-100 hover:bg-green-600 transition">
-										Save
-									</button>
-									<button
-										onClick={() => deletePin(selectedPinId)}
-										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
-										Delete
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				)}
 				<div className="border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
 					{/* Debug Button */}
 					<button
