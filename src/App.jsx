@@ -1074,7 +1074,7 @@ function App() {
 			)}
 
 			{/* Header */}
-			<div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-3 md:p-6 z-10 flex items-center gap-4">
+			<div className="absolute top-0 left-0 right-0 p-3 md:p-6 z-10 flex items-center gap-4">
 				<img src="/logo.png" alt="Landshake" className="w-auto" style={{ height: "60px" }} />
 
 				{/* Address Search - Hidden by default, shows on toggle */}
@@ -1224,7 +1224,12 @@ function App() {
 
 			{/* Debug Panel - Conditional Render */}
 			{showDebugPanel && (
-				<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />
+			<DebugPanel 
+				viewState={viewState} 
+				selectedParcel={selectedParcel} 
+				userLocation={userLocation}
+				onClose={() => setShowDebugPanel(false)}
+			/>
 			)}
 
 			{/* Bottom Navigation */}
