@@ -85,6 +85,11 @@ function App() {
 		return () => clearTimeout(timer);
 	}, []);
 
+	// Sync selectedParcelData from hook to selectedParcel state for ContactCard display
+	useEffect(() => {
+		setSelectedParcel(selectedParcelData);
+	}, [selectedParcelData]);
+
 	const requestInitialLocation = useCallback(() => {
 		if (!navigator.geolocation) {
 			return;
