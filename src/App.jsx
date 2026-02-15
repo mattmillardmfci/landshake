@@ -1072,9 +1072,9 @@ function App() {
 			<div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-3 md:p-6 z-10 flex items-center gap-4">
 				<img src="/logo.png" alt="Landshake" className="w-auto" style={{ height: "60px" }} />
 
-				{/* Address Search */}
-				<form onSubmit={handleAddressSearch} className="flex-1 max-w-md">
-					<div className="flex gap-1 md:gap-2">
+				{/* Address Search - Hidden by default, shows on toggle */}
+				{showSearchInput ? (
+					<form onSubmit={handleAddressSearch} className="flex-1 flex items-center gap-1 md:gap-2">
 						<input
 							type="text"
 							value={searchQuery}
@@ -1082,6 +1082,7 @@ function App() {
 							placeholder="Search address (e.g., 123 Main St)"
 							className="flex-1 px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded-lg bg-white/90 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-green"
 							disabled={searchLoading || isLoading}
+							autoFocus
 						/>
 						<button
 							type="submit"
@@ -1089,8 +1090,20 @@ function App() {
 							className="px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base bg-neon-green text-black font-semibold rounded-lg hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed transition">
 							{searchLoading ? "..." : "Search"}
 						</button>
-					</div>
-				</form>
+						<button
+							type="button"
+							onClick={() => setShowSearchInput(false)}
+							className="px-2 py-1.5 md:px-4 md:py-2 text-sm md:text-base bg-black/80 backdrop-blur-sm border border-neon-green rounded-lg text-neon-green hover:bg-neon-green hover:text-black transition-all">
+							✕
+						</button>
+					</form>
+				) : (
+					<button
+						onClick={() => setShowSearchInput(true)}
+						className="px-3 py-1.5 md:px-4 md:py-2 bg-black/80 backdrop-blur-sm border border-neon-green rounded-lg text-neon-green hover:bg-neon-green hover:text-black transition-all text-xl">
+						🔍
+					</button>
+				)}
 			</div>
 
 			{/* Loading Indicator */}
@@ -1421,7 +1434,7 @@ function App() {
 								? "bg-neon-green text-black"
 								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
 						}`}>
-						debug
+						DEBUG
 					</button>
 
 					{/* Tools Button */}
@@ -1435,7 +1448,7 @@ function App() {
 								? "bg-neon-green text-black"
 								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
 						}`}>
-						tools {showToolsMenu && "▼"}
+						TOOLS {showToolsMenu && "▼"}
 					</button>
 
 					{/* Admin Button */}
@@ -1446,7 +1459,7 @@ function App() {
 								? "bg-neon-green text-black"
 								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
 						}`}>
-						admin
+						ADMIN
 					</button>
 				</div>
 			</div>
