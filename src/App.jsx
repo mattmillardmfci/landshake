@@ -752,9 +752,9 @@ function App() {
 				return;
 			}
 
-			// Check if clicking on a cached area
+			// Check if clicking directly on an area's line (not the fill)
 			const features = e.target.querySourceFeatures("cached-areas", {
-				layers: ["cached-areas-fill"],
+				layers: ["cached-areas-line"],
 			});
 
 			if (features && features.length > 0) {
