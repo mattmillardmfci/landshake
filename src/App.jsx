@@ -70,6 +70,7 @@ function App() {
 	// Cached areas management
 	const [cachedAreas, setCachedAreas] = useState([]);
 	const [selectedAreaId, setSelectedAreaId] = useState(null);
+	const [editingAreaId, setEditingAreaId] = useState(null);
 	const areaIdRef = useRef(0); // Counter for unique area IDs
 
 	// Drawing management
@@ -738,6 +739,7 @@ function App() {
 		setCachedAreas((prev) => prev.filter((area) => area.id !== areaId));
 		if (selectedAreaId === areaId) {
 			setSelectedAreaId(null);
+			setEditingAreaId(null);
 		}
 	};
 
@@ -1233,8 +1235,36 @@ function App() {
 					</div>
 				)}
 
-				{/* Area Editing Menu - Appears if Area Selected */}
-				{selectedArea && (
+				{/* Area Info Card - Appears when Area is Selected (not editing) */}
+				{selectedArea && !editingAreaId && (
+					<div className="bg-black/70 border border-amber-500/30 rounded-lg backdrop-blur-md p-4 max-w-xs mx-auto" style={{ pointerEvents: "auto" }}>
+						<div className="space-y-3">
+							{/* Area Acreage Display */}
+							<div className="bg-black/50 border border-amber-500/50 rounded px-4 py-3 text-center">
+								<div className="text-xs text-amber-300 mb-1">Total Area</div>
+								<div className="text-2xl font-bold text-amber-400">{selectedArea.properties.acres}</div>
+								<div className="text-xs text-amber-200">acres</div>
+							</div>
+
+							{/* Edit & Close Buttons */}
+							<div className="flex gap-2 justify-center">
+								<button
+									onClick={() => setEditingAreaId(selectedAreaId)}
+									className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600/70 border border-blue-500/50 text-blue-100 hover:bg-blue-600 transition">
+									Edit
+								</button>
+								<button
+									onClick={() => setSelectedAreaId(null)}
+									className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-600/70 border border-gray-500/50 text-gray-100 hover:bg-gray-600 transition">
+									Close
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Area Editing Menu - Full Editor when Edit Mode Active */}
+				{selectedArea && editingAreaId === selectedAreaId && (
 					<div className="bg-black/70 border border-amber-500/30 rounded-lg backdrop-blur-md p-3" style={{ pointerEvents: "auto" }}>
 						<div className="space-y-2">
 							<p className="text-xs text-amber-400 text-center font-semibold">Area Editor</p>
@@ -1290,8 +1320,7 @@ function App() {
 								<div className="flex gap-2 justify-center">
 									<button
 										onClick={() => {
-											setSelectedAreaId(null);
-											setDrawMode(false);
+											setEditingAreaId(null);
 										}}
 										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-green-600/70 border border-green-500/50 text-green-100 hover:bg-green-600 transition">
 										Save
