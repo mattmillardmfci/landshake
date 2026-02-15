@@ -955,20 +955,20 @@ function App() {
 
 				{/* Drawn Points */}
 				{drawnPoints.length > 0 && (
-				<Source id="drawn-points" type="geojson" data={drawnPointsGeoJSON}>
-					<Layer
-						id="drawn-points-layer"
-						type="circle"
-						paint={{
-							"circle-radius": 6,
-							"circle-color": "#FF0000",
-							"circle-stroke-color": "#FFFFFF",
-							"circle-stroke-width": 2,
-							"circle-opacity": 1,
-						}}
-					/>
-				</Source>
-			)}
+					<Source id="drawn-points" type="geojson" data={drawnPointsGeoJSON}>
+						<Layer
+							id="drawn-points-layer"
+							type="circle"
+							paint={{
+								"circle-radius": 6,
+								"circle-color": "#FF0000",
+								"circle-stroke-color": "#FFFFFF",
+								"circle-stroke-width": 2,
+								"circle-opacity": 1,
+							}}
+						/>
+					</Source>
+				)}
 				{cachedAreas.length > 0 && (
 					<Source
 						id="cached-areas"
@@ -982,8 +982,8 @@ function App() {
 							id="cached-areas-fill"
 							type="fill"
 							paint={{
-								"fill-color": ["get", "fillColor", ["object", ["get", "properties"]]],
-								"fill-opacity": ["get", "fillOpacity", ["object", ["get", "properties"]]],
+								"fill-color": ["get", "fillColor"],
+								"fill-opacity": ["get", "fillOpacity"],
 							}}
 						/>
 						{/* Area borders */}
@@ -991,9 +991,9 @@ function App() {
 							id="cached-areas-line"
 							type="line"
 							paint={{
-								"line-color": ["get", "color", ["object", ["get", "properties"]]],
-								"line-width": ["get", "lineWidth", ["object", ["get", "properties"]]],
-								"line-opacity": ["get", "lineOpacity", ["object", ["get", "properties"]]],
+								"line-color": ["get", "color"],
+								"line-width": ["get", "lineWidth"],
+								"line-opacity": ["get", "lineOpacity"],
 							}}
 						/>
 						{/* Selected area highlight */}
@@ -1026,7 +1026,7 @@ function App() {
 							id="pins-layer"
 							type="symbol"
 							layout={{
-								"text-field": ["get", "icon", ["object", ["get", "properties"]]],
+								"text-field": ["get", "icon"],
 								"text-size": 32,
 								"text-offset": [0, 0],
 								"text-allow-overlap": true,
@@ -1224,12 +1224,12 @@ function App() {
 
 			{/* Debug Panel - Conditional Render */}
 			{showDebugPanel && (
-			<DebugPanel 
-				viewState={viewState} 
-				selectedParcel={selectedParcel} 
-				userLocation={userLocation}
-				onClose={() => setShowDebugPanel(false)}
-			/>
+				<DebugPanel
+					viewState={viewState}
+					selectedParcel={selectedParcel}
+					userLocation={userLocation}
+					onClose={() => setShowDebugPanel(false)}
+				/>
 			)}
 
 			{/* Bottom Navigation */}

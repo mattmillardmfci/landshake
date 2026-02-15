@@ -108,18 +108,14 @@ export default function DebugPanel({
 				<div>Map Interaction:</div>
 				<div>
 					Selected:{" "}
-					<span className={selectedParcel ? "text-green-400" : "text-gray-500"}>
-						{selectedParcel ? "YES" : "NONE"}
-					</span>
+					<span className={selectedParcel ? "text-green-400" : "text-gray-500"}>{selectedParcel ? "YES" : "NONE"}</span>
 				</div>
 			</div>
 
 			{/* User Location */}
 			<div className="text-gray-300 border-t border-gray-600 pt-2">
 				<div>User Location:</div>
-				<div className={userLocation ? "text-green-400" : "text-gray-500"}>
-					{userLocation ? "ACQUIRED" : "PENDING"}
-				</div>
+				<div className={userLocation ? "text-green-400" : "text-gray-500"}>{userLocation ? "ACQUIRED" : "PENDING"}</div>
 			</div>
 
 			{/* HTTP Errors */}
