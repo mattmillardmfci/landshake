@@ -1029,12 +1029,7 @@ function App() {
 							id="pins-layer"
 							type="circle"
 							paint={{
-								"circle-radius": [
-									"case",
-									["==", ["get", "iconType"], "deer-stand"],
-									14,
-									12,
-								],
+								"circle-radius": ["case", ["==", ["get", "iconType"], "deer-stand"], 14, 12],
 								"circle-color": ["get", "color"],
 								"circle-stroke-color": "#FFFFFF",
 								"circle-stroke-width": 2,
