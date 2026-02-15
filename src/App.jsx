@@ -62,6 +62,7 @@ function App() {
 	const [showToolsMenu, setShowToolsMenu] = useState(false);
 	const [showDebugPanel, setShowDebugPanel] = useState(false);
 	const [showAdminPanel, setShowAdminPanel] = useState(false);
+	const [showSearchInput, setShowSearchInput] = useState(false);
 	const [drawMode, setDrawMode] = useState(false);
 	const [drawnPoints, setDrawnPoints] = useState([]);
 	const [drawnLines, setDrawnLines] = useState([]);
