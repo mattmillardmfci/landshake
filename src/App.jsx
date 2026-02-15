@@ -809,30 +809,7 @@ function App() {
 				onMouseUp={handleMapMouseUp}
 				onMouseLeave={handleMapMouseUp}
 				onLoad={(e) => {
-					// Register SVG icons for pins
-					const map = e.target;
-					const iconTypes = ["trail-camera", "buck", "turkey", "deer-stand"];
-					
-					iconTypes.forEach((iconType) => {
-						// Skip if already loaded
-						if (map.hasImage(iconType)) return;
-						
-						// Load and register each SVG
-						const img = new Image();
-						img.src = `/icons/${iconType}.svg`;
-						img.onload = () => {
-							// Convert to canvas for proper Mapbox handling
-							const canvas = document.createElement("canvas");
-							canvas.width = img.width || 48;
-							canvas.height = img.height || 48;
-							const ctx = canvas.getContext("2d");
-							ctx.drawImage(img, 0, 0);
-							
-							if (!map.hasImage(iconType)) {
-								map.addImage(iconType, canvas, { sdf: true });
-							}
-						};
-					});
+					// Map is loaded - icons will render using circle approach
 				}}
 				mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
 				mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
@@ -1050,17 +1027,44 @@ function App() {
 						}}>
 						<Layer
 							id="pins-layer"
+							type="circle"
+							paint={{
+								"circle-radius": [
+									"case",
+									["==", ["get", "iconType"], "deer-stand"],
+									14,
+									12,
+								],
+								"circle-color": ["get", "color"],
+								"circle-stroke-color": "#FFFFFF",
+								"circle-stroke-width": 2,
+								"circle-opacity": 0.85,
+							}}
+						/>
+						{/* Icon type labels */}
+						<Layer
+							id="pins-label"
 							type="symbol"
 							layout={{
-								"icon-image": ["get", "iconType"],
-								"icon-size": 1.2,
-								"icon-allow-overlap": true,
+								"text-field": [
+									"case",
+									["==", ["get", "iconType"], "trail-camera"],
+									"📷",
+									["==", ["get", "iconType"], "buck"],
+									"🦌",
+									["==", ["get", "iconType"], "turkey"],
+									"🦃",
+									["==", ["get", "iconType"], "deer-stand"],
+									"🏗",
+									"📍",
+								],
+								"text-size": 14,
+								"text-offset": [0, 0],
+								"text-allow-overlap": true,
 							}}
 							paint={{
-								"icon-opacity": 1,
-								"icon-color": ["get", "color"],
-								"icon-halo-color": "#FFFFFF",
-								"icon-halo-width": 1,
+								"text-opacity": 1,
+								"text-color": "#FFFFFF",
 							}}
 						/>
 					</Source>
@@ -1196,9 +1200,7 @@ function App() {
 						{/* Temperature */}
 						<div className="text-neon-green text-xl font-bold">{weatherData.temp}°F</div>
 						{/* Wind Arrow */}
-						<div
-							className="text-gray-400 text-3xl"
-							style={{ transform: `rotate(${weatherData.wind.deg}deg)` }}>
+						<div className="text-gray-400 text-3xl" style={{ transform: `rotate(${weatherData.wind.deg}deg)` }}>
 							↑
 						</div>
 						{/* Wind Speed */}
