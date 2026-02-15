@@ -53,6 +53,8 @@ function App() {
 	// Bottom navigation state
 	const [activeNav, setActiveNav] = useState(null); // 'debug', 'tools', 'admin'
 	const [showToolsMenu, setShowToolsMenu] = useState(false);
+	const [showDebugPanel, setShowDebugPanel] = useState(false);
+	const [showAdminPanel, setShowAdminPanel] = useState(false);
 	const [drawMode, setDrawMode] = useState(false);
 	const [drawnPoints, setDrawnPoints] = useState([]);
 	const [drawnLines, setDrawnLines] = useState([]);
@@ -306,13 +308,7 @@ function App() {
 					hasLoggedGeolocation.current = true;
 				}
 
-				const inParcelBounds = longitude >= -92.496 && longitude <= -92.001 && latitude >= 38.324 && latitude <= 38.737;
 
-				// Show warning if outside parcel area
-				if (!inParcelBounds) {
-					console.warn("User location outside parcel service area");
-					setLocationError("You are outside the parcel data area");
-				}
 			},
 			(error) => {
 				console.warn("Geolocation error:", error);
@@ -463,9 +459,9 @@ function App() {
 							coordinates: [polygonCoords],
 						},
 						properties: {
-							color: "#39FF14",
-							fillColor: "#39FF14",
-							fillOpacity: 0.2,
+							color: "#FF0000",
+							fillColor: "#FF0000",
+							fillOpacity: 1,
 							lineOpacity: 0.8,
 							lineWidth: 3,
 						},
@@ -834,7 +830,7 @@ function App() {
 							type="circle"
 							paint={{
 								"circle-radius": 6,
-								"circle-color": "#FF6B35",
+								"circle-color": "#FF0000",
 								"circle-stroke-color": "#FFFFFF",
 								"circle-stroke-width": 2,
 								"circle-opacity": 1,
@@ -901,16 +897,13 @@ function App() {
 							id="pins-layer"
 							type="symbol"
 							layout={{
-								"icon-image": "default-marker",
 								"text-field": ["get", "icon", ["object", ["get", "properties"]]],
-								"text-size": 24,
-								"text-offset": [0, -1.5],
+								"text-size": 32,
+								"text-offset": [0, 0],
 								"text-allow-overlap": true,
 							}}
 							paint={{
-								"text-color": ["get", "color", ["object", ["get", "properties"]]],
-								"text-halo-color": "#000000",
-								"text-halo-width": 1,
+								"text-opacity": 1,
 							}}
 						/>
 					</Source>
@@ -1054,11 +1047,11 @@ function App() {
 				/>
 			)}
 
-			{/* Admin Panel */}
-			<AdminPanel onLocationClick={handleAdminLocationClick} />
+			{/* Admin Panel - Conditional Render */}
+			{showAdminPanel && <AdminPanel onLocationClick={handleAdminLocationClick} />}
 
-			{/* Debug Panel */}
-			<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />
+			{/* Debug Panel - Conditional Render */}
+			{showDebugPanel && <DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />}
 
 			{/* Bottom Navigation */}
 			<div
@@ -1234,9 +1227,9 @@ function App() {
 				<div className="bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
 					{/* Debug Button */}
 					<button
-						onClick={() => setActiveNav(activeNav === "debug" ? null : "debug")}
+						onClick={() => setShowDebugPanel(!showDebugPanel)}
 						className={`px-4 py-2 rounded-lg font-semibold transition ${
-							activeNav === "debug"
+							showDebugPanel
 								? "bg-neon-green text-black"
 								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
 						}`}>
@@ -1259,9 +1252,9 @@ function App() {
 
 					{/* Admin Button */}
 					<button
-						onClick={() => setActiveNav(activeNav === "admin" ? null : "admin")}
+						onClick={() => setShowAdminPanel(!showAdminPanel)}
 						className={`px-4 py-2 rounded-lg font-semibold transition ${
-							activeNav === "admin"
+							showAdminPanel
 								? "bg-neon-green text-black"
 								: "bg-black/50 border border-neon-green/50 text-neon-green hover:bg-neon-green/20"
 						}`}>
