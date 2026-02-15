@@ -50,6 +50,13 @@ function App() {
 
 	const [visibleParcels, setVisibleParcels] = useState(null);
 
+	// Weather data
+	const [weatherData, setWeatherData] = useState(null);
+	const [weatherLoading, setWeatherLoading] = useState(false);
+
+	// Device heading (direction phone is pointing)
+	const [deviceHeading, setDeviceHeading] = useState(null);
+
 	// Bottom navigation state
 	const [activeNav, setActiveNav] = useState(null); // 'debug', 'tools', 'admin'
 	const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -334,6 +341,65 @@ function App() {
 		return () => clearInterval(intervalId);
 	}, []);
 
+	// Fetch weather data when user location changes
+	useEffect(() => {
+		if (!userLocation) return;
+
+		const fetchWeather = async () => {
+			setWeatherLoading(true);
+			try {
+				const response = await fetch(
+					`https://api.openweathermap.org/data/2.5/weather?lat=${userLocation.latitude}&lon=${userLocation.longitude}&appid=d5815fb72e6471090eff5462a5b00b73&units=imperial`
+				);
+				const data = await response.json();
+				if (data.cod === 200) {
+					setWeatherData({
+						temp: Math.round(data.main.temp),
+						condition: data.weather[0].main,
+						icon: data.weather[0].icon,
+						wind: {
+							speed: Math.round(data.wind.speed),
+							deg: data.wind.deg || 0,
+						},
+					});
+				}
+			} catch (error) {
+				console.warn("Weather fetch error:", error);
+			}
+			setWeatherLoading(false);
+		};
+
+		fetchWeather();
+	}, [userLocation?.latitude, userLocation?.longitude]);
+
+	// Listen to device orientation for heading
+	useEffect(() => {
+		if (!navigator.permissions) return;
+
+		const handleDeviceOrientation = (event) => {
+			const heading = event.alpha || 0; // 0-360 degrees
+			setDeviceHeading(heading);
+		};
+
+		// Request permission for iOS 13+
+		if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+			DeviceOrientationEvent.requestPermission()
+				.then((permissionState) => {
+					if (permissionState === "granted") {
+						window.addEventListener("deviceorientation", handleDeviceOrientation);
+					}
+				})
+				.catch(console.warn);
+		} else {
+			// Non-iOS 13 or non-iOS devices
+			window.addEventListener("deviceorientation", handleDeviceOrientation);
+		}
+
+		return () => {
+			window.removeEventListener("deviceorientation", handleDeviceOrientation);
+		};
+	}, []);
+
 	// Build GeoJSON for drawn points and lines
 	const drawnPointsGeoJSON = {
 		type: "FeatureCollection",
@@ -350,6 +416,46 @@ function App() {
 	const drawnLinesGeoJSON = {
 		type: "FeatureCollection",
 		features: drawnLines,
+	};
+
+	// Generate heading cone/sector geometry
+	const getHeadingConeGeoJSON = () => {
+		if (!userLocation || deviceHeading === null) return null;
+
+		// Create a cone sector (45-degree field of view)
+		const coneRadius = 0.005; // ~500m radius at zoom level
+		const fov = 45; // Field of view in degrees
+		const startAngle = deviceHeading - fov / 2;
+		const endAngle = deviceHeading + fov / 2;
+
+		const points = [
+			[userLocation.longitude, userLocation.latitude], // Center point
+		];
+
+		// Generate arc points
+		for (let angle = startAngle; angle <= endAngle; angle += 5) {
+			const rad = (angle * Math.PI) / 180;
+			const dx = coneRadius * Math.cos(rad);
+			const dy = coneRadius * Math.sin(rad);
+			points.push([userLocation.longitude + dx, userLocation.latitude + dy]);
+		}
+
+		// Close the polygon
+		points.push([userLocation.longitude, userLocation.latitude]);
+
+		return {
+			type: "FeatureCollection",
+			features: [
+				{
+					type: "Feature",
+					geometry: {
+						type: "Polygon",
+						coordinates: [points],
+					},
+					properties: {},
+				},
+			],
+		};
 	};
 
 	// Build proper GeoJSON for user location
@@ -755,7 +861,7 @@ function App() {
 							paint={{
 								"circle-radius": 12 + locationPulse * 20,
 								"circle-color": "#3B82F6",
-								"circle-opacity": 0.35 * (1 - locationPulse),
+								"circle-opacity": 0.75 * (1 - locationPulse),
 								"circle-blur": 0.6,
 							}}
 						/>
@@ -769,6 +875,29 @@ function App() {
 								"circle-stroke-color": "#FFFFFF",
 								"circle-stroke-width": 2,
 								"circle-opacity": 1,
+							}}
+						/>
+					</Source>
+				)}
+
+				{/* Heading/Direction Cone */}
+				{getHeadingConeGeoJSON() && (
+					<Source id="heading-cone" type="geojson" data={getHeadingConeGeoJSON()}>
+						<Layer
+							id="heading-cone-fill"
+							type="fill"
+							paint={{
+								"fill-color": "#3B82F6",
+								"fill-opacity": 0.15,
+							}}
+						/>
+						<Layer
+							id="heading-cone-line"
+							type="line"
+							paint={{
+								"line-color": "#3B82F6",
+								"line-width": 2,
+								"line-opacity": 0.4,
 							}}
 						/>
 					</Source>
@@ -1003,6 +1132,30 @@ function App() {
 				</div>
 			)}
 
+			{/* Weather Widget - Top Right */}
+			{weatherData && (
+				<div className="absolute top-6 right-6 z-20 bg-black/70 backdrop-blur-md border border-neon-green/30 rounded-lg p-4 text-center min-w-24">
+					<div className="flex flex-col items-center gap-1">
+						{/* Weather Icon */}
+						<div className="text-4xl">
+							{weatherData.icon.includes("01") ? "☀️" : weatherData.icon.includes("02") ? "⛅" : weatherData.icon.includes("03") || weatherData.icon.includes("04") ? "☁️" : weatherData.icon.includes("09") || weatherData.icon.includes("10") ? "🌧️" : weatherData.icon.includes("11") ? "⛈️" : weatherData.icon.includes("13") ? "❄️" : "🌡️"}
+						</div>
+						{/* Temperature */}
+						<div className="text-neon-green text-xl font-bold">
+							{weatherData.temp}°F
+						</div>
+						{/* Wind Direction */}
+						<div className="text-gray-400 text-xs">
+							{Math.round(weatherData.wind.deg)}° Wind
+						</div>
+						{/* Wind Speed */}
+						<div className="text-gray-400 text-xs">
+							{weatherData.wind.speed} mph
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Error Messages */}
 			{locationError && (
 				<div className="absolute top-24 left-6 right-6 md:left-12 md:right-auto md:w-80 bg-red-900/90 backdrop-blur-md rounded-lg p-4 z-10">
@@ -1055,7 +1208,7 @@ function App() {
 
 			{/* Bottom Navigation */}
 			<div
-				className="absolute left-0 right-0 z-10 px-4 py-3 space-y-2"
+				className="fixed left-0 right-0 z-40 px-4 py-3 space-y-2"
 				style={{
 					bottom: "max(0px, env(safe-area-inset-bottom, 0px))",
 				}}>
