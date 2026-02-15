@@ -1454,7 +1454,7 @@ function App() {
 						</div>
 					</div>
 				)}
-				<div className="bg-gradient-to-t from-black/90 to-transparent border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
+				<div className="border-t border-neon-green/30 flex gap-4 justify-center items-center pt-3">
 					{/* Debug Button */}
 					<button
 						onClick={() => setShowDebugPanel(!showDebugPanel)}
