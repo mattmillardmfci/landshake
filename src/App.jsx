@@ -1167,8 +1167,12 @@ function App() {
 						</div>
 						{/* Temperature */}
 						<div className="text-neon-green text-xl font-bold">{weatherData.temp}°F</div>
-						{/* Wind Direction */}
-						<div className="text-gray-400 text-xs">{Math.round(weatherData.wind.deg)}° Wind</div>
+						{/* Wind Arrow */}
+						<div
+							className="text-gray-400 text-3xl"
+							style={{ transform: `rotate(${weatherData.wind.deg}deg)` }}>
+							↑
+						</div>
 						{/* Wind Speed */}
 						<div className="text-gray-400 text-xs">{weatherData.wind.speed} mph</div>
 					</div>
