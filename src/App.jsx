@@ -314,8 +314,6 @@ function App() {
 					trackVisitor({ latitude, longitude, accuracy });
 					hasLoggedGeolocation.current = true;
 				}
-
-
 			},
 			(error) => {
 				console.warn("Geolocation error:", error);
@@ -349,7 +347,7 @@ function App() {
 			setWeatherLoading(true);
 			try {
 				const response = await fetch(
-					`https://api.openweathermap.org/data/2.5/weather?lat=${userLocation.latitude}&lon=${userLocation.longitude}&appid=d5815fb72e6471090eff5462a5b00b73&units=imperial`
+					`https://api.openweathermap.org/data/2.5/weather?lat=${userLocation.latitude}&lon=${userLocation.longitude}&appid=d5815fb72e6471090eff5462a5b00b73&units=imperial`,
 				);
 				const data = await response.json();
 				if (data.cod === 200) {
@@ -382,7 +380,10 @@ function App() {
 		};
 
 		// Request permission for iOS 13+
-		if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+		if (
+			typeof DeviceOrientationEvent !== "undefined" &&
+			typeof DeviceOrientationEvent.requestPermission === "function"
+		) {
 			DeviceOrientationEvent.requestPermission()
 				.then((permissionState) => {
 					if (permissionState === "granted") {
@@ -553,8 +554,8 @@ function App() {
 				const startPoint = drawnPoints[0];
 				const distance = getDistance(newPoint, startPoint);
 
-				// If within 10 meters of starting point, close the polygon
-				if (distance < 10) {
+				// If within 50 meters of starting point, close the polygon (lenient snapping)
+				if (distance < 50) {
 					// Create polygon feature
 					const polygonCoords = [...drawnPoints, startPoint]; // Close the ring
 					const areaFeature = {
@@ -566,10 +567,10 @@ function App() {
 						},
 						properties: {
 							color: "#FF0000",
-							fillColor: "#FF0000",
-							fillOpacity: 1,
-							lineOpacity: 0.8,
-							lineWidth: 3,
+							fillColor: "#FFFFFF",
+							fillOpacity: 0,
+							lineOpacity: 1,
+							lineWidth: 1,
 						},
 					};
 
@@ -596,7 +597,10 @@ function App() {
 						type: "LineString",
 						coordinates: [lastPoint, newPoint],
 					},
-					properties: {},
+					properties: {
+						color: "#FF0000",
+						lineWidth: 1,
+					},
 				};
 				setDrawnLines((prev) => [...prev, newLine]);
 			}
@@ -706,21 +710,13 @@ function App() {
 	// Pin management functions
 	const updatePinProperty = (pinId, property, value) => {
 		setPins((prev) =>
-			prev.map((pin) =>
-				pin.id === pinId
-					? { ...pin, properties: { ...pin.properties, [property]: value } }
-					: pin,
-			),
+			prev.map((pin) => (pin.id === pinId ? { ...pin, properties: { ...pin.properties, [property]: value } } : pin)),
 		);
 	};
 
 	const updatePinCoordinates = (pinId, lng, lat) => {
 		setPins((prev) =>
-			prev.map((pin) =>
-				pin.id === pinId
-					? { ...pin, geometry: { type: "Point", coordinates: [lng, lat] } }
-					: pin,
-			),
+			prev.map((pin) => (pin.id === pinId ? { ...pin, geometry: { type: "Point", coordinates: [lng, lat] } } : pin)),
 		);
 	};
 
@@ -752,14 +748,14 @@ function App() {
 						coordinates: [lngLat.lng, lngLat.lat],
 					},
 					properties: {
-						color: "#FF6B35",
+						color: "#3B82F6",
 						icon: "📍", // Default pin icon
 						label: "Pin",
 					},
 				};
 				setPins((prev) => [...prev, newPin]);
 				setSelectedPinId(newPin.id);
-				setPinMode(false);
+				// Don't exit pin mode - keep it active to allow multiple pins or editing
 				return;
 			}
 
@@ -943,9 +939,9 @@ function App() {
 							id="drawn-lines-layer"
 							type="line"
 							paint={{
-								"line-color": "#FF6B35",
-								"line-width": 3,
-								"line-opacity": 0.8,
+								"line-color": ["get", "color", ["object", ["get", "properties"]]],
+								"line-width": ["get", "lineWidth", ["object", ["get", "properties"]]],
+								"line-opacity": 1,
 							}}
 						/>
 					</Source>
@@ -953,22 +949,20 @@ function App() {
 
 				{/* Drawn Points */}
 				{drawnPoints.length > 0 && (
-					<Source id="drawn-points" type="geojson" data={drawnPointsGeoJSON}>
-						<Layer
-							id="drawn-points-layer"
-							type="circle"
-							paint={{
-								"circle-radius": 6,
-								"circle-color": "#FF0000",
-								"circle-stroke-color": "#FFFFFF",
-								"circle-stroke-width": 2,
-								"circle-opacity": 1,
-							}}
-						/>
-					</Source>
-				)}
-
-				{/* Cached Areas */}
+				<Source id="drawn-points" type="geojson" data={drawnPointsGeoJSON}>
+					<Layer
+						id="drawn-points-layer"
+						type="circle"
+						paint={{
+							"circle-radius": 6,
+							"circle-color": "#FF0000",
+							"circle-stroke-color": "#FFFFFF",
+							"circle-stroke-width": 2,
+							"circle-opacity": 1,
+						}}
+					/>
+				</Source>
+			)}
 				{cachedAreas.length > 0 && (
 					<Source
 						id="cached-areas"
@@ -1138,20 +1132,26 @@ function App() {
 					<div className="flex flex-col items-center gap-1">
 						{/* Weather Icon */}
 						<div className="text-4xl">
-							{weatherData.icon.includes("01") ? "☀️" : weatherData.icon.includes("02") ? "⛅" : weatherData.icon.includes("03") || weatherData.icon.includes("04") ? "☁️" : weatherData.icon.includes("09") || weatherData.icon.includes("10") ? "🌧️" : weatherData.icon.includes("11") ? "⛈️" : weatherData.icon.includes("13") ? "❄️" : "🌡️"}
+							{weatherData.icon.includes("01")
+								? "☀️"
+								: weatherData.icon.includes("02")
+									? "⛅"
+									: weatherData.icon.includes("03") || weatherData.icon.includes("04")
+										? "☁️"
+										: weatherData.icon.includes("09") || weatherData.icon.includes("10")
+											? "🌧️"
+											: weatherData.icon.includes("11")
+												? "⛈️"
+												: weatherData.icon.includes("13")
+													? "❄️"
+													: "🌡️"}
 						</div>
 						{/* Temperature */}
-						<div className="text-neon-green text-xl font-bold">
-							{weatherData.temp}°F
-						</div>
+						<div className="text-neon-green text-xl font-bold">{weatherData.temp}°F</div>
 						{/* Wind Direction */}
-						<div className="text-gray-400 text-xs">
-							{Math.round(weatherData.wind.deg)}° Wind
-						</div>
+						<div className="text-gray-400 text-xs">{Math.round(weatherData.wind.deg)}° Wind</div>
 						{/* Wind Speed */}
-						<div className="text-gray-400 text-xs">
-							{weatherData.wind.speed} mph
-						</div>
+						<div className="text-gray-400 text-xs">{weatherData.wind.speed} mph</div>
 					</div>
 				</div>
 			)}
@@ -1204,7 +1204,9 @@ function App() {
 			{showAdminPanel && <AdminPanel onLocationClick={handleAdminLocationClick} />}
 
 			{/* Debug Panel - Conditional Render */}
-			{showDebugPanel && <DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />}
+			{showDebugPanel && (
+				<DebugPanel viewState={viewState} selectedParcel={selectedParcel} userLocation={userLocation} />
+			)}
 
 			{/* Bottom Navigation */}
 			<div
@@ -1283,12 +1285,22 @@ function App() {
 									/>
 								</div>
 
-								{/* Delete Button */}
-								<button
-									onClick={() => deleteArea(selectedAreaId)}
-									className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
-									Delete
-								</button>
+								{/* Save & Delete Buttons */}
+								<div className="flex gap-2 justify-center">
+									<button
+										onClick={() => {
+											setSelectedAreaId(null);
+											setDrawMode(false);
+										}}
+										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-green-600/70 border border-green-500/50 text-green-100 hover:bg-green-600 transition">
+										Save
+									</button>
+									<button
+										onClick={() => deleteArea(selectedAreaId)}
+										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
+										Delete
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -1367,12 +1379,34 @@ function App() {
 									</button>
 								</div>
 
-								{/* Delete Button */}
-								<button
-									onClick={() => deletePin(selectedPinId)}
-									className="w-full px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
-									Delete Pin
-								</button>
+								{/* Label / Name */}
+								<div className="flex items-center gap-2 justify-center">
+									<label className="text-xs text-gray-400">Label:</label>
+									<input
+										type="text"
+										value={selectedPin.properties.label}
+										onChange={(e) => updatePinProperty(selectedPinId, "label", e.target.value)}
+										placeholder="Pin label"
+										className="px-2 py-1 text-xs rounded bg-gray-800 border border-blue-500/30 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-24"
+									/>
+								</div>
+
+								{/* Save & Delete Buttons */}
+								<div className="flex gap-2 justify-center">
+									<button
+										onClick={() => {
+											setSelectedPinId(null);
+											setPinMode(false);
+										}}
+										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-green-600/70 border border-green-500/50 text-green-100 hover:bg-green-600 transition">
+										Save
+									</button>
+									<button
+										onClick={() => deletePin(selectedPinId)}
+										className="flex-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-600/70 border border-red-500/50 text-red-100 hover:bg-red-600 transition">
+										Delete
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
